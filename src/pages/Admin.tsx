@@ -22,6 +22,14 @@ export default function Admin() {
   });
 
   useEffect(() => {
+    const token = sessionStorage.getItem("admin_token");
+    if (token) {
+      setIsLoggedIn(true);
+      setPassword(token);
+    }
+  }, []);
+
+  useEffect(() => {
     if (isLoggedIn) {
       const fetchData = async () => {
         try {
@@ -68,46 +76,64 @@ export default function Admin() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "0901") {
+    // In a real app, we'd verify this with the server, but for now we'll store it
+    // and let the subsequent API calls fail if the token is invalid.
+    if (password) {
+      sessionStorage.setItem("admin_token", password);
       setIsLoggedIn(true);
     } else {
-      alert("비밀번호가 틀렸습니다.");
+      alert("비밀번호를 입력해주세요.");
     }
   };
 
+  const getAuthHeaders = (contentType: string | null = "application/json") => {
+    const token = sessionStorage.getItem("admin_token");
+    const headers: Record<string, string> = {
+      "x-admin-token": token || ""
+    };
+    if (contentType) {
+      headers["Content-Type"] = contentType;
+    }
+    return headers;
+  };
+
+  const handleAuthError = async (res: Response) => {
+    if (res.status === 401) {
+      alert("인증이 만료되었거나 비밀번호가 틀렸습니다. 다시 로그인해주세요.");
+      sessionStorage.removeItem("admin_token");
+      setIsLoggedIn(false);
+      return true;
+    }
+    return false;
+  };
+
   const saveHome = async () => {
-    await fetch("api/content", {
+    const res = await fetch("api/content", {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "x-admin-token": password
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ key: "home", value: home }),
     });
+    if (await handleAuthError(res)) return;
     alert("저장되었습니다.");
   };
 
   const saveAbout = async () => {
-    await fetch("api/content", {
+    const res = await fetch("api/content", {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "x-admin-token": password
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ key: "about", value: about }),
     });
+    if (await handleAuthError(res)) return;
     alert("저장되었습니다.");
   };
 
   const saveContact = async () => {
-    await fetch("api/content", {
+    const res = await fetch("api/content", {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "x-admin-token": password
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ key: "contact", value: contact }),
     });
+    if (await handleAuthError(res)) return;
     alert("저장되었습니다.");
   };
 
@@ -116,15 +142,14 @@ export default function Admin() {
     const method = editingProject.id ? "PUT" : "POST";
     const url = editingProject.id ? `api/projects?id=${editingProject.id}` : "api/projects";
     
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
-      headers: { 
-        "Content-Type": "application/json",
-        "x-admin-token": password
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(editingProject),
     });
     
+    if (await handleAuthError(res)) return;
+
     setEditingProject(null);
     fetch("api/projects").then(res => res.json()).then(setProjects);
     alert("저장되었습니다.");
@@ -132,32 +157,32 @@ export default function Admin() {
 
   const deleteProject = async (id: number) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`api/projects?id=${id}`, { 
+    const res = await fetch(`api/projects?id=${id}`, { 
       method: "DELETE",
-      headers: { "x-admin-token": password }
+      headers: getAuthHeaders(null)
     });
+    if (await handleAuthError(res)) return;
     fetch("api/projects").then(res => res.json()).then(setProjects);
   };
 
   const saveEquipment = async (item: EquipmentItem) => {
     const method = item.id ? "PUT" : "POST";
     const url = item.id ? `api/equipment?id=${item.id}` : "api/equipment";
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
-      headers: { 
-        "Content-Type": "application/json",
-        "x-admin-token": password
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(item),
     });
+    if (await handleAuthError(res)) return;
     fetch("api/equipment").then(res => res.json()).then(setEquipment);
   };
 
   const deleteEquipment = async (id: number) => {
-    await fetch(`api/equipment?id=${id}`, { 
+    const res = await fetch(`api/equipment?id=${id}`, { 
       method: "DELETE",
-      headers: { "x-admin-token": password }
+      headers: getAuthHeaders(null)
     });
+    if (await handleAuthError(res)) return;
     fetch("api/equipment").then(res => res.json()).then(setEquipment);
   };
 
@@ -168,12 +193,10 @@ export default function Admin() {
       reader.onloadend = async () => {
         const res = await fetch("api/upload", {
           method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "x-admin-token": password
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ image: reader.result as string }),
         });
+        if (await handleAuthError(res)) return;
         const { url } = await res.json();
         setEditingProject(prev => prev ? { ...prev, thumbnailUrl: url } : null);
       };
@@ -188,12 +211,10 @@ export default function Admin() {
       reader.onloadend = async () => {
         const res = await fetch("api/upload", {
           method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "x-admin-token": password
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ image: reader.result as string }),
         });
+        if (await handleAuthError(res)) return;
         const { url } = await res.json();
         setAbout({ ...about, profileImageUrl: url });
       };
