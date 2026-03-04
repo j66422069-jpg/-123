@@ -104,6 +104,32 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // API Routes
+  app.get("/api/content", (req, res) => {
+    const { key } = req.query;
+    if (key) {
+      res.json(getSetting(key as string, {}));
+    } else {
+      const all = db.prepare("SELECT * FROM settings").all() as any[];
+      const result = all.reduce((acc, curr) => {
+        acc[curr.key] = JSON.parse(curr.value);
+        return acc;
+      }, {});
+      res.json(result);
+    }
+  });
+
+  app.post("/api/content", (req, res) => {
+    const { key, value } = req.body;
+    setSetting(key, value);
+    res.json({ success: true });
+  });
+
+  app.post("/api/upload", (req, res) => {
+    // For local dev, we just return the base64 as the URL or save to a local folder.
+    // To keep it simple, we'll just return the base64 data URL.
+    res.json({ url: req.body.image });
+  });
+
   app.get("/api/home", (req, res) => res.json(getSetting("home", {
     name: "", role: "", tagline: "", resumeUrl: "", featuredProjectIds: []
   })));
@@ -130,6 +156,23 @@ async function startServer() {
 
   // Projects
   app.get("/api/projects", (req, res) => {
+    const { id } = req.query;
+    if (id) {
+      const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as any;
+      if (project) {
+        project.tech = {
+          camera: project.tech_camera,
+          lens: project.tech_lens,
+          lighting: project.tech_lighting,
+          color: project.tech_color
+        };
+        project.videos = db.prepare("SELECT * FROM project_videos WHERE project_id = ?").all(id);
+        res.json(project);
+      } else {
+        res.status(404).json({ error: "Not found" });
+      }
+      return;
+    }
     const projects = db.prepare("SELECT * FROM projects ORDER BY year DESC").all() as any[];
     const transformed = projects.map(p => ({
       ...p,
@@ -188,7 +231,8 @@ async function startServer() {
     res.json({ id: projectId });
   });
 
-  app.put("/api/projects/:id", (req, res) => {
+  app.put("/api/projects", (req, res) => {
+    const id = req.query.id;
     const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
     db.prepare(`
       UPDATE projects SET 
@@ -207,27 +251,74 @@ async function startServer() {
       tech?.lens ?? null, 
       tech?.lighting ?? null, 
       tech?.color ?? null, 
-      req.params.id
+      id
     );
 
-    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(req.params.id);
+    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
     if (videos && Array.isArray(videos)) {
       const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtubeUrl) VALUES (?, ?, ?, ?)");
       for (const v of videos) {
-        stmt.run(req.params.id, v.title, v.description, v.youtubeUrl);
+        stmt.run(id, v.title, v.description, v.youtubeUrl);
+      }
+    }
+    res.json({ success: true });
+  });
+
+  app.delete("/api/projects", (req, res) => {
+    const id = req.query.id;
+    db.prepare("DELETE FROM projects WHERE id = ?").run(id);
+    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
+    res.json({ success: true });
+  });
+
+  app.put("/api/projects/:id", (req, res) => {
+    const id = req.params.id || req.query.id;
+    const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
+    db.prepare(`
+      UPDATE projects SET 
+        title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnailUrl = ?,
+        tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?
+      WHERE id = ?
+    `).run(
+      title ?? null, 
+      year ?? null, 
+      type ?? null, 
+      role ?? null, 
+      summary ?? null, 
+      featured ? 1 : 0, 
+      thumbnailUrl ?? null, 
+      tech?.camera ?? null, 
+      tech?.lens ?? null, 
+      tech?.lighting ?? null, 
+      tech?.color ?? null, 
+      id
+    );
+
+    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
+    if (videos && Array.isArray(videos)) {
+      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtubeUrl) VALUES (?, ?, ?, ?)");
+      for (const v of videos) {
+        stmt.run(id, v.title, v.description, v.youtubeUrl);
       }
     }
     res.json({ success: true });
   });
 
   app.delete("/api/projects/:id", (req, res) => {
-    db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.id);
-    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(req.params.id);
+    const id = req.params.id || req.query.id;
+    db.prepare("DELETE FROM projects WHERE id = ?").run(id);
+    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
     res.json({ success: true });
   });
 
   // Equipment
   app.get("/api/equipment", (req, res) => {
+    const { id } = req.query;
+    if (id) {
+      const item = db.prepare("SELECT * FROM equipment WHERE id = ?").get(id);
+      res.json(item);
+      return;
+    }
     const items = db.prepare("SELECT * FROM equipment").all();
     res.json(items);
   });
@@ -238,14 +329,29 @@ async function startServer() {
     res.json({ id: info.lastInsertRowid });
   });
 
-  app.put("/api/equipment/:id", (req, res) => {
+  app.put("/api/equipment", (req, res) => {
+    const id = req.query.id;
     const { category, name, note } = req.body;
-    db.prepare("UPDATE equipment SET category = ?, name = ?, note = ? WHERE id = ?").run(category ?? null, name ?? null, note ?? null, req.params.id);
+    db.prepare("UPDATE equipment SET category = ?, name = ?, note = ? WHERE id = ?").run(category ?? null, name ?? null, note ?? null, id);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/equipment", (req, res) => {
+    const id = req.query.id;
+    db.prepare("DELETE FROM equipment WHERE id = ?").run(id);
+    res.json({ success: true });
+  });
+
+  app.put("/api/equipment/:id", (req, res) => {
+    const id = req.params.id || req.query.id;
+    const { category, name, note } = req.body;
+    db.prepare("UPDATE equipment SET category = ?, name = ?, note = ? WHERE id = ?").run(category ?? null, name ?? null, note ?? null, id);
     res.json({ success: true });
   });
 
   app.delete("/api/equipment/:id", (req, res) => {
-    db.prepare("DELETE FROM equipment WHERE id = ?").run(req.params.id);
+    const id = req.params.id || req.query.id;
+    db.prepare("DELETE FROM equipment WHERE id = ?").run(id);
     res.json({ success: true });
   });
 

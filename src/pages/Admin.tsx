@@ -22,11 +22,11 @@ export default function Admin() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      fetch("api/home").then(res => res.json()).then(setHome);
-      fetch("api/about").then(res => res.json()).then(setAbout);
+      fetch("api/content?key=home").then(res => res.json()).then(setHome);
+      fetch("api/content?key=about").then(res => res.json()).then(setAbout);
       fetch("api/projects").then(res => res.json()).then(setProjects);
       fetch("api/equipment").then(res => res.json()).then(setEquipment);
-      fetch("api/contact").then(res => res.json()).then(setContact);
+      fetch("api/content?key=contact").then(res => res.json()).then(setContact);
     }
   }, [isLoggedIn]);
 
@@ -40,28 +40,37 @@ export default function Admin() {
   };
 
   const saveHome = async () => {
-    await fetch("api/home", {
+    await fetch("api/content", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(home),
+      headers: { 
+        "Content-Type": "application/json",
+        "x-admin-token": password
+      },
+      body: JSON.stringify({ key: "home", value: home }),
     });
     alert("저장되었습니다.");
   };
 
   const saveAbout = async () => {
-    await fetch("api/about", {
+    await fetch("api/content", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(about),
+      headers: { 
+        "Content-Type": "application/json",
+        "x-admin-token": password
+      },
+      body: JSON.stringify({ key: "about", value: about }),
     });
     alert("저장되었습니다.");
   };
 
   const saveContact = async () => {
-    await fetch("api/contact", {
+    await fetch("api/content", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(contact),
+      headers: { 
+        "Content-Type": "application/json",
+        "x-admin-token": password
+      },
+      body: JSON.stringify({ key: "contact", value: contact }),
     });
     alert("저장되었습니다.");
   };
@@ -69,11 +78,14 @@ export default function Admin() {
   const saveProject = async () => {
     if (!editingProject) return;
     const method = editingProject.id ? "PUT" : "POST";
-    const url = editingProject.id ? `api/projects/${editingProject.id}` : "api/projects";
+    const url = editingProject.id ? `api/projects?id=${editingProject.id}` : "api/projects";
     
     await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-admin-token": password
+      },
       body: JSON.stringify(editingProject),
     });
     
@@ -84,23 +96,32 @@ export default function Admin() {
 
   const deleteProject = async (id: number) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`api/projects/${id}`, { method: "DELETE" });
+    await fetch(`api/projects?id=${id}`, { 
+      method: "DELETE",
+      headers: { "x-admin-token": password }
+    });
     fetch("api/projects").then(res => res.json()).then(setProjects);
   };
 
   const saveEquipment = async (item: EquipmentItem) => {
     const method = item.id ? "PUT" : "POST";
-    const url = item.id ? `api/equipment/${item.id}` : "api/equipment";
+    const url = item.id ? `api/equipment?id=${item.id}` : "api/equipment";
     await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-admin-token": password
+      },
       body: JSON.stringify(item),
     });
     fetch("api/equipment").then(res => res.json()).then(setEquipment);
   };
 
   const deleteEquipment = async (id: number) => {
-    await fetch(`api/equipment/${id}`, { method: "DELETE" });
+    await fetch(`api/equipment?id=${id}`, { 
+      method: "DELETE",
+      headers: { "x-admin-token": password }
+    });
     fetch("api/equipment").then(res => res.json()).then(setEquipment);
   };
 
@@ -108,8 +129,17 @@ export default function Admin() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditingProject(prev => prev ? { ...prev, thumbnailUrl: reader.result as string } : null);
+      reader.onloadend = async () => {
+        const res = await fetch("api/upload", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-token": password
+          },
+          body: JSON.stringify({ image: reader.result as string }),
+        });
+        const { url } = await res.json();
+        setEditingProject(prev => prev ? { ...prev, thumbnailUrl: url } : null);
       };
       reader.readAsDataURL(file);
     }
@@ -119,8 +149,17 @@ export default function Admin() {
     const file = e.target.files?.[0];
     if (file && about) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setAbout({ ...about, profileImageUrl: reader.result as string });
+      reader.onloadend = async () => {
+        const res = await fetch("api/upload", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-token": password
+          },
+          body: JSON.stringify({ image: reader.result as string }),
+        });
+        const { url } = await res.json();
+        setAbout({ ...about, profileImageUrl: url });
       };
       reader.readAsDataURL(file);
     }
@@ -463,7 +502,7 @@ export default function Admin() {
                       <div className="flex items-center gap-4">
                         <button 
                           onClick={async () => {
-                            const res = await fetch(`api/projects/${p.id}`);
+                            const res = await fetch(`api/projects?id=${p.id}`);
                             if (res.ok) {
                               const fullProject = await res.json();
                               setEditingProject(fullProject);

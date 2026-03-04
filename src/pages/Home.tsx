@@ -9,7 +9,7 @@ export default function Home() {
   const [projects, setProjects] = useState<ProjectData[]>([]);
 
   useEffect(() => {
-    fetch("api/home").then(res => res.json()).then(setData);
+    fetch("api/content?key=home").then(res => res.json()).then(setData);
     fetch("api/projects").then(res => res.json()).then(setProjects);
   }, []);
 
