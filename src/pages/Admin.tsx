@@ -9,26 +9,62 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState("home");
 
   // Data States
-  const [home, setHome] = useState<HomeData | null>(null);
-  const [about, setAbout] = useState<AboutData | null>(null);
+  const [home, setHome] = useState<HomeData>({
+    name: "", role: "", tagline: "", resumeUrl: "", featuredProjectIds: []
+  });
+  const [about, setAbout] = useState<AboutData>({
+    profileImageUrl: "", introText: "", capabilities: [], careers: []
+  });
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
-  const [contact, setContact] = useState<ContactData | null>(null);
+  const [contact, setContact] = useState<ContactData>({
+    email: "", instagramUrl: "", instagramText: "", phone: "", resumeUrl: ""
+  });
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const fetchData = async () => {
+        try {
+          const [homeRes, aboutRes, projectsRes, equipmentRes, contactRes] = await Promise.all([
+            fetch("api/content?key=home"),
+            fetch("api/content?key=about"),
+            fetch("api/projects"),
+            fetch("api/equipment"),
+            fetch("api/content?key=contact")
+          ]);
+
+          if (homeRes.ok) {
+            const json = await homeRes.json();
+            if (json) setHome(prev => ({ ...prev, ...json }));
+          }
+          if (aboutRes.ok) {
+            const json = await aboutRes.json();
+            if (json) setAbout(prev => ({ ...prev, ...json }));
+          }
+          if (projectsRes.ok) {
+            const json = await projectsRes.json();
+            if (Array.isArray(json)) setProjects(json);
+          }
+          if (equipmentRes.ok) {
+            const json = await equipmentRes.json();
+            if (Array.isArray(json)) setEquipment(json);
+          }
+          if (contactRes.ok) {
+            const json = await contactRes.json();
+            if (json) setContact(prev => ({ ...prev, ...json }));
+          }
+        } catch (error) {
+          console.error("Failed to fetch admin data:", error);
+        }
+      };
+      fetchData();
+    }
+  }, [isLoggedIn]);
 
   // Editing States
   const [editingProject, setEditingProject] = useState<Partial<ProjectData> | null>(null);
   const [editingEquipmentId, setEditingEquipmentId] = useState<number | string | null>(null);
   const [equipmentForm, setEquipmentForm] = useState({ name: "", note: "" });
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetch("api/content?key=home").then(res => res.json()).then(setHome);
-      fetch("api/content?key=about").then(res => res.json()).then(setAbout);
-      fetch("api/projects").then(res => res.json()).then(setProjects);
-      fetch("api/equipment").then(res => res.json()).then(setEquipment);
-      fetch("api/content?key=contact").then(res => res.json()).then(setContact);
-    }
-  }, [isLoggedIn]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +244,7 @@ export default function Admin() {
 
         {/* Content Area */}
         <div className="flex-1 bg-white border border-black/5 p-12">
-          {activeTab === "home" && home && (
+          {activeTab === "home" && (
             <div className="space-y-8">
               <h3 className="text-xl font-bold mb-8">HOME 설정</h3>
               <div className="grid grid-cols-1 gap-6">
@@ -254,7 +290,7 @@ export default function Admin() {
             </div>
           )}
 
-          {activeTab === "about" && about && (
+          {activeTab === "about" && (
             <div className="space-y-8">
               <h3 className="text-xl font-bold mb-8">ABOUT 설정</h3>
               <div className="grid grid-cols-1 gap-6">
@@ -281,7 +317,7 @@ export default function Admin() {
                 <div>
                   <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">가능 업무 범위 (엔터로 구분)</label>
                   <textarea
-                    value={about.capabilities.join("\n")}
+                    value={(Array.isArray(about.capabilities) ? about.capabilities : []).join("\n")}
                     onChange={(e) => setAbout({ ...about, capabilities: e.target.value.split("\n") })}
                     className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-32"
                   />
@@ -289,7 +325,7 @@ export default function Admin() {
                 <div>
                   <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">경력 사항 (엔터로 구분)</label>
                   <textarea
-                    value={about.careers.join("\n")}
+                    value={(Array.isArray(about.careers) ? about.careers : []).join("\n")}
                     onChange={(e) => setAbout({ ...about, careers: e.target.value.split("\n") })}
                     className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-32"
                   />
@@ -329,7 +365,7 @@ export default function Admin() {
                       <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">제목</label>
                       <input
                         type="text"
-                        value={editingProject.title}
+                        value={editingProject.title || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, title: e.target.value })}
                         className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black"
                       />
@@ -338,7 +374,7 @@ export default function Admin() {
                       <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">연도</label>
                       <input
                         type="text"
-                        value={editingProject.year}
+                        value={editingProject.year || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, year: e.target.value })}
                         className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black"
                       />
@@ -347,7 +383,7 @@ export default function Admin() {
                       <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">형태 (예: 단편영화, 광고)</label>
                       <input
                         type="text"
-                        value={editingProject.type}
+                        value={editingProject.type || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, type: e.target.value })}
                         className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black"
                       />
@@ -356,7 +392,7 @@ export default function Admin() {
                       <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">역할 (예: 촬영감독, 촬영팀)</label>
                       <input
                         type="text"
-                        value={editingProject.role}
+                        value={editingProject.role || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, role: e.target.value })}
                         className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black"
                       />
@@ -366,7 +402,7 @@ export default function Admin() {
                   <div>
                     <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">한 줄 요약</label>
                     <textarea
-                      value={editingProject.summary}
+                      value={editingProject.summary || ""}
                       onChange={(e) => setEditingProject({ ...editingProject, summary: e.target.value })}
                       className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-24"
                     />
@@ -407,7 +443,7 @@ export default function Admin() {
                             value={(editingProject.tech as any)?.[key] || ""}
                             onChange={(e) => setEditingProject({
                               ...editingProject,
-                              tech: { ...editingProject.tech!, [key]: e.target.value }
+                              tech: { ...(editingProject.tech || {}), [key]: e.target.value }
                             })}
                             className="w-full px-2 py-2 border border-black/10 text-xs focus:outline-none focus:border-black"
                           />
@@ -431,7 +467,7 @@ export default function Admin() {
                       </button>
                     </div>
                     <div className="space-y-4">
-                      {editingProject.videos?.map((v, idx) => (
+                      {(Array.isArray(editingProject.videos) ? editingProject.videos : []).map((v, idx) => (
                         <div key={idx} className="p-6 border border-black/10 relative">
                           <button
                             onClick={() => {
@@ -488,7 +524,7 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
-                  {projects.map((p) => (
+                  {(Array.isArray(projects) ? projects : []).map((p) => (
                     <div key={p.id} className="flex items-center justify-between p-6 border border-black/5 hover:border-black/20 transition-colors">
                       <div className="flex items-center gap-6">
                         <div className="w-20 h-12 bg-black/5 overflow-hidden">
@@ -540,7 +576,7 @@ export default function Admin() {
                   </button>
                 </div>
                     <div className="grid grid-cols-1 gap-2">
-                      {equipment.filter(e => e.category === cat).map((item) => (
+                      {(Array.isArray(equipment) ? equipment : []).filter(e => e.category === cat).map((item) => (
                         <div key={item.id}>
                           {editingEquipmentId === item.id ? (
                             <div className="p-4 bg-black/5 space-y-3 border border-black/20">
@@ -644,7 +680,7 @@ export default function Admin() {
             </div>
           )}
 
-          {activeTab === "contact" && contact && (
+          {activeTab === "contact" && (
             <div className="space-y-8">
               <h3 className="text-xl font-bold mb-8">CONTACT 설정</h3>
               <div className="grid grid-cols-1 gap-6">

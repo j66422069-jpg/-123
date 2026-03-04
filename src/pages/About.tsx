@@ -3,13 +3,32 @@ import { motion } from "motion/react";
 import { AboutData } from "../types";
 
 export default function About() {
-  const [data, setData] = useState<AboutData | null>(null);
+  const [data, setData] = useState<AboutData>({
+    profileImageUrl: "",
+    introText: "",
+    capabilities: [],
+    careers: []
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("api/content?key=about").then(res => res.json()).then(setData);
+    const fetchData = async () => {
+      try {
+        const res = await fetch("api/content?key=about");
+        if (res.ok) {
+          const json = await res.json();
+          if (json) setData(json);
+        }
+      } catch (error) {
+        console.error("Failed to fetch about data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  if (!data) return null;
+  if (loading) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">
@@ -52,7 +71,7 @@ export default function About() {
             </h4>
             <h3 className="text-xl font-bold mb-6">가능 업무 범위</h3>
             <ul className="space-y-4">
-              {data.capabilities.map((item, i) => (
+              {(Array.isArray(data.capabilities) ? data.capabilities : []).map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-black/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-black/20 mt-2 shrink-0" />
                   <span className="text-sm font-medium">{item}</span>
@@ -67,7 +86,7 @@ export default function About() {
             </h4>
             <h3 className="text-xl font-bold mb-6">주요 경력</h3>
             <ul className="space-y-4">
-              {data.careers.map((item, i) => (
+              {(Array.isArray(data.careers) ? data.careers : []).map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-black/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-black/20 mt-2 shrink-0" />
                   <span className="text-sm font-medium">{item}</span>
