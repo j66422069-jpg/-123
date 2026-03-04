@@ -60,47 +60,69 @@ const setSetting = (key: string, value: any) => {
 };
 
 // Initial Data if empty
-if (!db.prepare("SELECT key FROM settings WHERE key = 'home'").get()) {
-  setSetting("home", {
-    name: "홍길동",
-    role: "촬영감독 (Cinematographer)",
-    tagline: "빛과 구도로 이야기의 깊이를 더하는 촬영감독 홍길동입니다.",
-    resumeUrl: "",
-    featuredProjectIds: []
-  });
-  setSetting("about", {
-    profileImageUrl: "https://picsum.photos/seed/profile/400/500",
-    introText: "안녕하세요. 현장의 공기를 담아내는 촬영감독입니다. 다수의 단편영화와 광고 작업을 통해 탄탄한 기본기를 쌓아왔습니다.",
-    capabilities: ["디지털 시네마토그래피", "조명 설계 및 운용", "DaVinci Resolve 색보정"],
-    careers: ["2023 - 현재: 프리랜서 촬영감독", "2021 - 2023: AA 프로덕션 촬영팀", "2020: 한국예술종합학교 영상원 졸업"]
-  });
-  setSetting("contact", {
-    email: "director@example.com",
-    instagramUrl: "https://instagram.com",
-    instagramText: "@cinematographer",
-    phone: "010-1234-5678",
-    resumeUrl: ""
-  });
-}
+const initHome = () => {
+  if (!db.prepare("SELECT key FROM settings WHERE key = 'home'").get()) {
+    setSetting("home", {
+      name: "홍길동",
+      role: "촬영감독 (Cinematographer)",
+      tagline: "빛과 구도로 이야기의 깊이를 더하는 촬영감독 홍길동입니다.",
+      resumeUrl: "",
+      featuredProjectIds: []
+    });
+  }
+};
+
+const initAbout = () => {
+  if (!db.prepare("SELECT key FROM settings WHERE key = 'about'").get()) {
+    setSetting("about", {
+      profileImageUrl: "https://picsum.photos/seed/profile/400/500",
+      introText: "안녕하세요. 현장의 공기를 담아내는 촬영감독입니다. 다수의 단편영화와 광고 작업을 통해 탄탄한 기본기를 쌓아왔습니다.",
+      capabilities: ["디지털 시네마토그래피", "조명 설계 및 운용", "DaVinci Resolve 색보정"],
+      careers: ["2023 - 현재: 프리랜서 촬영감독", "2021 - 2023: AA 프로덕션 촬영팀", "2020: 한국예술종합학교 영상원 졸업"]
+    });
+  }
+};
+
+const initContact = () => {
+  if (!db.prepare("SELECT key FROM settings WHERE key = 'contact'").get()) {
+    setSetting("contact", {
+      email: "director@example.com",
+      instagramUrl: "https://instagram.com",
+      instagramText: "@cinematographer",
+      phone: "010-1234-5678",
+      resumeUrl: ""
+    });
+  }
+};
+
+initHome();
+initAbout();
+initContact();
 
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '50mb' }));
 
   // API Routes
-  app.get("/api/home", (req, res) => res.json(getSetting("home", {})));
+  app.get("/api/home", (req, res) => res.json(getSetting("home", {
+    name: "", role: "", tagline: "", resumeUrl: "", featuredProjectIds: []
+  })));
   app.post("/api/home", (req, res) => {
     setSetting("home", req.body);
     res.json({ success: true });
   });
 
-  app.get("/api/about", (req, res) => res.json(getSetting("about", {})));
+  app.get("/api/about", (req, res) => res.json(getSetting("about", {
+    profileImageUrl: "", introText: "", capabilities: [], careers: []
+  })));
   app.post("/api/about", (req, res) => {
     setSetting("about", req.body);
     res.json({ success: true });
   });
 
-  app.get("/api/contact", (req, res) => res.json(getSetting("contact", {})));
+  app.get("/api/contact", (req, res) => res.json(getSetting("contact", {
+    email: "", instagramUrl: "", instagramText: "", phone: "", resumeUrl: ""
+  })));
   app.post("/api/contact", (req, res) => {
     setSetting("contact", req.body);
     res.json({ success: true });

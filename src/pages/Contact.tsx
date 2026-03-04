@@ -8,7 +8,7 @@ export default function Contact() {
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/contact").then(res => res.json()).then(setData);
+    fetch("api/contact").then(res => res.json()).then(setData);
   }, []);
 
   const handleCopy = (text: string, type: string) => {
