@@ -12,7 +12,7 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/projects/${id}`)
+    fetch(`api/projects/${id}`)
       .then(res => {
         if (!res.ok) throw new Error("프로젝트를 찾을 수 없습니다.");
         return res.json();

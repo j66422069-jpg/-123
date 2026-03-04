@@ -7,7 +7,7 @@ export default function Equipment() {
   const [items, setItems] = useState<EquipmentItem[]>([]);
 
   useEffect(() => {
-    fetch("/api/equipment").then(res => res.json()).then(setItems);
+    fetch("api/equipment").then(res => res.json()).then(setItems);
   }, []);
 
   const categories = ["Camera", "Lens", "Lighting", "Color"] as const;

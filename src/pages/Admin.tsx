@@ -22,11 +22,11 @@ export default function Admin() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      fetch("/api/home").then(res => res.json()).then(setHome);
-      fetch("/api/about").then(res => res.json()).then(setAbout);
-      fetch("/api/projects").then(res => res.json()).then(setProjects);
-      fetch("/api/equipment").then(res => res.json()).then(setEquipment);
-      fetch("/api/contact").then(res => res.json()).then(setContact);
+      fetch("api/home").then(res => res.json()).then(setHome);
+      fetch("api/about").then(res => res.json()).then(setAbout);
+      fetch("api/projects").then(res => res.json()).then(setProjects);
+      fetch("api/equipment").then(res => res.json()).then(setEquipment);
+      fetch("api/contact").then(res => res.json()).then(setContact);
     }
   }, [isLoggedIn]);
 
@@ -40,7 +40,7 @@ export default function Admin() {
   };
 
   const saveHome = async () => {
-    await fetch("/api/home", {
+    await fetch("api/home", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(home),
@@ -49,7 +49,7 @@ export default function Admin() {
   };
 
   const saveAbout = async () => {
-    await fetch("/api/about", {
+    await fetch("api/about", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(about),
@@ -58,7 +58,7 @@ export default function Admin() {
   };
 
   const saveContact = async () => {
-    await fetch("/api/contact", {
+    await fetch("api/contact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(contact),
@@ -69,7 +69,7 @@ export default function Admin() {
   const saveProject = async () => {
     if (!editingProject) return;
     const method = editingProject.id ? "PUT" : "POST";
-    const url = editingProject.id ? `/api/projects/${editingProject.id}` : "/api/projects";
+    const url = editingProject.id ? `api/projects/${editingProject.id}` : "api/projects";
     
     await fetch(url, {
       method,
@@ -78,30 +78,30 @@ export default function Admin() {
     });
     
     setEditingProject(null);
-    fetch("/api/projects").then(res => res.json()).then(setProjects);
+    fetch("api/projects").then(res => res.json()).then(setProjects);
     alert("저장되었습니다.");
   };
 
   const deleteProject = async (id: number) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    fetch("/api/projects").then(res => res.json()).then(setProjects);
+    await fetch(`api/projects/${id}`, { method: "DELETE" });
+    fetch("api/projects").then(res => res.json()).then(setProjects);
   };
 
   const saveEquipment = async (item: EquipmentItem) => {
     const method = item.id ? "PUT" : "POST";
-    const url = item.id ? `/api/equipment/${item.id}` : "/api/equipment";
+    const url = item.id ? `api/equipment/${item.id}` : "api/equipment";
     await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(item),
     });
-    fetch("/api/equipment").then(res => res.json()).then(setEquipment);
+    fetch("api/equipment").then(res => res.json()).then(setEquipment);
   };
 
   const deleteEquipment = async (id: number) => {
-    await fetch(`/api/equipment/${id}`, { method: "DELETE" });
-    fetch("/api/equipment").then(res => res.json()).then(setEquipment);
+    await fetch(`api/equipment/${id}`, { method: "DELETE" });
+    fetch("api/equipment").then(res => res.json()).then(setEquipment);
   };
 
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -463,7 +463,7 @@ export default function Admin() {
                       <div className="flex items-center gap-4">
                         <button 
                           onClick={async () => {
-                            const res = await fetch(`/api/projects/${p.id}`);
+                            const res = await fetch(`api/projects/${p.id}`);
                             if (res.ok) {
                               const fullProject = await res.json();
                               setEditingProject(fullProject);
