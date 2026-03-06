@@ -77,8 +77,7 @@ export const handler = async (event) => {
         tech_color: tech?.color ?? body.techColor ?? body.tech_color ?? null,
         link: body.link ?? null,
         description: body.description ?? null,
-        created_at: body.createdAt ?? body.created_at ?? undefined,
-        updated_at: body.updatedAt ?? body.updated_at ?? undefined
+        updated_at: new Date().toISOString()
       };
 
       const { data: project, error: pError } = await supabase
@@ -127,8 +126,7 @@ export const handler = async (event) => {
         tech_color: tech?.color ?? body.techColor ?? body.tech_color ?? null,
         link: body.link ?? null,
         description: body.description ?? null,
-        created_at: body.createdAt ?? body.created_at ?? undefined,
-        updated_at: body.updatedAt ?? body.updated_at ?? undefined
+        updated_at: new Date().toISOString()
       };
 
       const { error: pError } = await supabase
