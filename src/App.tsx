@@ -4,6 +4,7 @@ import { Menu, X, ChevronRight, ExternalLink, Mail, Instagram, Phone, Download, 
 import { motion, AnimatePresence } from "motion/react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { ContentProvider } from "./context/ContentContext";
 
 // Pages
 import Home from "./pages/Home";
@@ -94,25 +95,27 @@ const Navbar = () => {
 export default function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-[#F9F9F9] text-black font-sans selection:bg-black selection:text-white">
-        <Navbar />
-        <main className="pt-16 min-h-screen">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/projects" element={<ProjectList />} />
-            <Route path="/projects/:id" element={<ProjectDetail />} />
-            <Route path="/equipment" element={<Equipment />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/admin" element={<Admin />} />
-          </Routes>
-        </main>
-        <footer className="py-12 px-6 border-t border-black/5 text-center">
-          <p className="text-[10px] tracking-widest text-black/30 uppercase">
-            © {new Date().getFullYear()} Cinematographer Portfolio. All Rights Reserved.
-          </p>
-        </footer>
-      </div>
+      <ContentProvider>
+        <div className="min-h-screen bg-[#F9F9F9] text-black font-sans selection:bg-black selection:text-white">
+          <Navbar />
+          <main className="pt-16 min-h-screen">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/projects" element={<ProjectList />} />
+              <Route path="/projects/:id" element={<ProjectDetail />} />
+              <Route path="/equipment" element={<Equipment />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/admin" element={<Admin />} />
+            </Routes>
+          </main>
+          <footer className="py-12 px-6 border-t border-black/5 text-center">
+            <p className="text-[10px] tracking-widest text-black/30 uppercase">
+              © {new Date().getFullYear()} Cinematographer Portfolio. All Rights Reserved.
+            </p>
+          </footer>
+        </div>
+      </ContentProvider>
     </Router>
   );
 }

@@ -2,40 +2,19 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Mail, Instagram, Phone, Download, Copy, Check, ExternalLink } from "lucide-react";
 import { ContactData } from "../types";
+import { useContent } from "../context/ContentContext";
 
 export default function Contact() {
-  const [data, setData] = useState<ContactData>({
-    email: "email@example.com",
-    instagramUrl: "https://instagram.com",
-    instagramText: "@cinematographer",
-    phone: "010-0000-0000",
-    resumeUrl: ""
-  });
-  const [loading, setLoading] = useState(true);
+  const { content, loading: contentLoading } = useContent();
   const [copied, setCopied] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchContact = async () => {
-      try {
-        const res = await fetch("api/content");
-        if (res.ok) {
-          const allContent = await res.json();
-          setData({
-            email: allContent.contact_email || "email@example.com",
-            instagramUrl: allContent.contact_instagramUrl || "https://instagram.com",
-            instagramText: allContent.contact_instagramText || "@cinematographer",
-            phone: allContent.contact_phone || "010-0000-0000",
-            resumeUrl: allContent.contact_resumeUrl || ""
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch contact:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchContact();
-  }, []);
+  const data: ContactData = {
+    email: content?.contact_email || (contentLoading ? "" : "email@example.com"),
+    instagramUrl: content?.contact_instagramUrl || (contentLoading ? "" : "https://instagram.com"),
+    instagramText: content?.contact_instagramText || (contentLoading ? "" : "@cinematographer"),
+    phone: content?.contact_phone || (contentLoading ? "" : "010-0000-0000"),
+    resumeUrl: content?.contact_resumeUrl || ""
+  };
 
   const handleCopy = (text: string, type: string) => {
     if (!text) return;
@@ -44,7 +23,7 @@ export default function Contact() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  if (loading) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
+  if (contentLoading && !content) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">

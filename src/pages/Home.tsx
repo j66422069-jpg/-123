@@ -3,48 +3,36 @@ import { Link } from "react-router-dom";
 import { ChevronRight, Download } from "lucide-react";
 import { motion } from "motion/react";
 import { HomeData, ProjectData } from "../types";
+import { useContent } from "../context/ContentContext";
 
 export default function Home() {
-  const [data, setData] = useState<HomeData>({
-    name: "Director Name",
-    role: "Cinematographer / Director",
-    tagline: "Capturing moments that tell a story.",
-    resumeUrl: "",
-    featuredProjectIds: []
-  });
+  const { content, loading: contentLoading } = useContent();
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const data: HomeData = {
+    name: content?.home_name || (contentLoading ? "" : "Director Name"),
+    role: content?.home_role || (contentLoading ? "" : "Cinematographer / Director"),
+    tagline: content?.home_tagline || (contentLoading ? "" : "Capturing moments that tell a story."),
+    resumeUrl: content?.home_resumeUrl || "",
+    featuredProjectIds: Array.isArray(content?.home_featuredProjectIds) ? content.home_featuredProjectIds : []
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProjects = async () => {
       try {
-        const [contentRes, projectsRes] = await Promise.all([
-          fetch("api/content"),
-          fetch("api/projects")
-        ]);
-
-        if (contentRes.ok) {
-          const allContent = await contentRes.json();
-          setData({
-            name: allContent.home_name || "Director Name",
-            role: allContent.home_role || "Cinematographer / Director",
-            tagline: allContent.home_tagline || "Capturing moments that tell a story.",
-            resumeUrl: allContent.home_resumeUrl || "",
-            featuredProjectIds: Array.isArray(allContent.home_featuredProjectIds) ? allContent.home_featuredProjectIds : []
-          });
-        }
-
+        const projectsRes = await fetch("api/projects");
         if (projectsRes.ok) {
           const projectsJson = await projectsRes.json();
           if (Array.isArray(projectsJson)) setProjects(projectsJson);
         }
       } catch (error) {
-        console.error("Failed to fetch home data:", error);
+        console.error("Failed to fetch projects:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchProjects();
   }, []);
 
   const featuredProjects = (Array.isArray(projects) ? projects : []).filter(p => Boolean(p.featured));

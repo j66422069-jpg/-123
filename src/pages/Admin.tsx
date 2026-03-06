@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Plus, Trash2, Save, Edit2, X, Upload, PlusCircle, Trash } from "lucide-react";
 import { HomeData, AboutData, ProjectData, EquipmentItem, ContactData, VideoData } from "../types";
+import { useContent } from "../context/ContentContext";
 
 export default function Admin() {
+  const { fetchContent } = useContent();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState("home");
@@ -13,7 +15,7 @@ export default function Admin() {
     name: "", role: "", tagline: "", resumeUrl: "", featuredProjectIds: []
   });
   const [about, setAbout] = useState<AboutData>({
-    profileImageUrl: "", introText: "", capabilities: [], careers: []
+    profileImageUrl: "", introText: "", about_services: "", about_experience: ""
   });
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
@@ -55,8 +57,8 @@ export default function Admin() {
             setAbout({
               profileImageUrl: allContent.about_profileImageUrl || "",
               introText: allContent.about_introText || "",
-              capabilities: Array.isArray(allContent.about_capabilities) ? allContent.about_capabilities : [],
-              careers: Array.isArray(allContent.about_careers) ? allContent.about_careers : []
+              about_services: allContent.about_services || "",
+              about_experience: allContent.about_experience || ""
             });
 
             // Map Contact
@@ -141,6 +143,7 @@ export default function Admin() {
         const errorData = await res.json();
         throw new Error(errorData.error || "저장에 실패했습니다.");
       }
+      await fetchContent(true);
       alert("저장되었습니다.");
     } catch (error: any) {
       console.error("Save Home error:", error);
@@ -156,8 +159,8 @@ export default function Admin() {
         body: JSON.stringify({
           about_profileImageUrl: about.profileImageUrl,
           about_introText: about.introText,
-          about_capabilities: about.capabilities,
-          about_careers: about.careers
+          about_services: about.about_services,
+          about_experience: about.about_experience
         }),
       });
       if (await handleAuthError(res)) return;
@@ -165,6 +168,7 @@ export default function Admin() {
         const errorData = await res.json();
         throw new Error(errorData.error || "저장에 실패했습니다.");
       }
+      await fetchContent(true);
       alert("저장되었습니다.");
     } catch (error: any) {
       console.error("Save About error:", error);
@@ -190,6 +194,7 @@ export default function Admin() {
         const errorData = await res.json();
         throw new Error(errorData.error || "저장에 실패했습니다.");
       }
+      await fetchContent(true);
       alert("저장되었습니다.");
     } catch (error: any) {
       console.error("Save Contact error:", error);
@@ -404,16 +409,16 @@ export default function Admin() {
                 <div>
                   <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">가능 업무 범위 (엔터로 구분)</label>
                   <textarea
-                    value={(Array.isArray(about.capabilities) ? about.capabilities : []).join("\n")}
-                    onChange={(e) => setAbout({ ...about, capabilities: e.target.value.split("\n") })}
+                    value={about.about_services}
+                    onChange={(e) => setAbout({ ...about, about_services: e.target.value })}
                     className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-32"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">경력 사항 (엔터로 구분)</label>
                   <textarea
-                    value={(Array.isArray(about.careers) ? about.careers : []).join("\n")}
-                    onChange={(e) => setAbout({ ...about, careers: e.target.value.split("\n") })}
+                    value={about.about_experience}
+                    onChange={(e) => setAbout({ ...about, about_experience: e.target.value })}
                     className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-32"
                   />
                 </div>

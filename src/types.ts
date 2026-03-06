@@ -9,8 +9,10 @@ export interface HomeData {
 export interface AboutData {
   profileImageUrl: string;
   introText: string;
-  capabilities: string[];
-  careers: string[];
+  about_services: string;
+  about_experience: string;
+  capabilities?: string[];
+  careers?: string[];
 }
 
 export interface VideoData {

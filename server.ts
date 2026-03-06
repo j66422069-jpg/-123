@@ -96,37 +96,31 @@ const setSetting = (key: string, value: any) => {
 
 // Initial Data if empty
 const initHome = () => {
-  if (!db.prepare("SELECT key FROM settings WHERE key = 'home'").get()) {
-    setSetting("home", {
-      name: "홍길동",
-      role: "촬영감독 (Cinematographer)",
-      tagline: "빛과 구도로 이야기의 깊이를 더하는 촬영감독 홍길동입니다.",
-      resumeUrl: "",
-      featuredProjectIds: []
-    });
+  if (!db.prepare("SELECT key FROM settings WHERE key = 'home_name'").get()) {
+    setSetting("home_name", "홍길동");
+    setSetting("home_role", "촬영감독 (Cinematographer)");
+    setSetting("home_tagline", "빛과 구도로 이야기의 깊이를 더하는 촬영감독 홍길동입니다.");
+    setSetting("home_resumeUrl", "");
+    setSetting("home_featuredProjectIds", []);
   }
 };
 
 const initAbout = () => {
-  if (!db.prepare("SELECT key FROM settings WHERE key = 'about'").get()) {
-    setSetting("about", {
-      profileImageUrl: "https://picsum.photos/seed/profile/400/500",
-      introText: "안녕하세요. 현장의 공기를 담아내는 촬영감독입니다. 다수의 단편영화와 광고 작업을 통해 탄탄한 기본기를 쌓아왔습니다.",
-      capabilities: ["디지털 시네마토그래피", "조명 설계 및 운용", "DaVinci Resolve 색보정"],
-      careers: ["2023 - 현재: 프리랜서 촬영감독", "2021 - 2023: AA 프로덕션 촬영팀", "2020: 한국예술종합학교 영상원 졸업"]
-    });
+  if (!db.prepare("SELECT key FROM settings WHERE key = 'about_introText'").get()) {
+    setSetting("about_profileImageUrl", "https://picsum.photos/seed/profile/400/500");
+    setSetting("about_introText", "안녕하세요. 현장의 공기를 담아내는 촬영감독입니다. 다수의 단편영화와 광고 작업을 통해 탄탄한 기본기를 쌓아왔습니다.");
+    setSetting("about_services", "디지털 시네마토그래피\n조명 설계 및 운용\nDaVinci Resolve 색보정");
+    setSetting("about_experience", "2023 - 현재: 프리랜서 촬영감독\n2021 - 2023: AA 프로덕션 촬영팀\n2020: 한국예술종합학교 영상원 졸업");
   }
 };
 
 const initContact = () => {
-  if (!db.prepare("SELECT key FROM settings WHERE key = 'contact'").get()) {
-    setSetting("contact", {
-      email: "director@example.com",
-      instagramUrl: "https://instagram.com",
-      instagramText: "@cinematographer",
-      phone: "010-1234-5678",
-      resumeUrl: ""
-    });
+  if (!db.prepare("SELECT key FROM settings WHERE key = 'contact_email'").get()) {
+    setSetting("contact_email", "director@example.com");
+    setSetting("contact_instagramUrl", "https://instagram.com");
+    setSetting("contact_instagramText", "@cinematographer");
+    setSetting("contact_phone", "010-1234-5678");
+    setSetting("contact_resumeUrl", "");
   }
 };
 
@@ -154,9 +148,23 @@ async function startServer() {
   });
 
   app.post("/api/content", (req, res) => {
-    const { key, value } = req.body;
-    setSetting(key, value);
-    res.json({ success: true });
+    try {
+      const body = req.body;
+      if (body.key && body.value !== undefined) {
+        setSetting(body.key, body.value);
+      } else {
+        for (const [key, value] of Object.entries(body)) {
+          setSetting(key, value);
+        }
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error saving content:", error);
+      res.status(500).json({ 
+        error: "Failed to save content", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
   });
 
   app.post("/api/upload", (req, res) => {
