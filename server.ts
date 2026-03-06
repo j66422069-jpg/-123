@@ -25,7 +25,7 @@ db.exec(`
     role TEXT,
     summary TEXT,
     featured INTEGER DEFAULT 0,
-    thumbnailUrl TEXT,
+    thumbnail_url TEXT,
     tech_camera TEXT,
     tech_lens TEXT,
     tech_lighting TEXT,
@@ -37,7 +37,7 @@ db.exec(`
     project_id INTEGER,
     title TEXT,
     description TEXT,
-    youtubeUrl TEXT,
+    youtube_url TEXT,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
   );
 
@@ -48,6 +48,23 @@ db.exec(`
     note TEXT
   );
 `);
+
+// Migration: Rename columns if they are in the old format
+try {
+  const projectCols = db.prepare("PRAGMA table_info(projects)").all() as any[];
+  if (projectCols.some(c => c.name === "thumbnailUrl") && !projectCols.some(c => c.name === "thumbnail_url")) {
+    db.exec("ALTER TABLE projects RENAME COLUMN thumbnailUrl TO thumbnail_url");
+    console.log("Migrated projects table: thumbnailUrl -> thumbnail_url");
+  }
+
+  const videoCols = db.prepare("PRAGMA table_info(project_videos)").all() as any[];
+  if (videoCols.some(c => c.name === "youtubeUrl") && !videoCols.some(c => c.name === "youtube_url")) {
+    db.exec("ALTER TABLE project_videos RENAME COLUMN youtubeUrl TO youtube_url");
+    console.log("Migrated project_videos table: youtubeUrl -> youtube_url");
+  }
+} catch (e) {
+  console.error("Migration failed:", e);
+}
 
 // Helper to get/set settings
 const getSetting = (key: string, defaultValue: any) => {
@@ -160,13 +177,17 @@ async function startServer() {
     if (id) {
       const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as any;
       if (project) {
+        project.thumbnailUrl = project.thumbnail_url;
         project.tech = {
           camera: project.tech_camera,
           lens: project.tech_lens,
           lighting: project.tech_lighting,
           color: project.tech_color
         };
-        project.videos = db.prepare("SELECT * FROM project_videos WHERE project_id = ?").all(id);
+        project.videos = db.prepare("SELECT * FROM project_videos WHERE project_id = ?").all(id).map((v: any) => ({
+          ...v,
+          youtubeUrl: v.youtube_url
+        }));
         res.json(project);
       } else {
         res.status(404).json({ error: "Not found" });
@@ -176,6 +197,7 @@ async function startServer() {
     const projects = db.prepare("SELECT * FROM projects ORDER BY year DESC").all() as any[];
     const transformed = projects.map(p => ({
       ...p,
+      thumbnailUrl: p.thumbnail_url,
       tech: {
         camera: p.tech_camera,
         lens: p.tech_lens,
@@ -189,13 +211,17 @@ async function startServer() {
   app.get("/api/projects/:id", (req, res) => {
     const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(req.params.id) as any;
     if (project) {
+      project.thumbnailUrl = project.thumbnail_url;
       project.tech = {
         camera: project.tech_camera,
         lens: project.tech_lens,
         lighting: project.tech_lighting,
         color: project.tech_color
       };
-      project.videos = db.prepare("SELECT * FROM project_videos WHERE project_id = ?").all(req.params.id);
+      project.videos = db.prepare("SELECT * FROM project_videos WHERE project_id = ?").all(req.params.id).map((v: any) => ({
+        ...v,
+        youtubeUrl: v.youtube_url
+      }));
       res.json(project);
     } else {
       res.status(404).json({ error: "Not found" });
@@ -205,7 +231,7 @@ async function startServer() {
   app.post("/api/projects", (req, res) => {
     const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
     const info = db.prepare(`
-      INSERT INTO projects (title, year, type, role, summary, featured, thumbnailUrl, tech_camera, tech_lens, tech_lighting, tech_color)
+      INSERT INTO projects (title, year, type, role, summary, featured, thumbnail_url, tech_camera, tech_lens, tech_lighting, tech_color)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       title ?? null, 
@@ -223,7 +249,7 @@ async function startServer() {
     
     const projectId = info.lastInsertRowid;
     if (videos && Array.isArray(videos)) {
-      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtubeUrl) VALUES (?, ?, ?, ?)");
+      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
       for (const v of videos) {
         stmt.run(projectId, v.title, v.description, v.youtubeUrl);
       }
@@ -236,7 +262,7 @@ async function startServer() {
     const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
     db.prepare(`
       UPDATE projects SET 
-        title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnailUrl = ?,
+        title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
         tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?
       WHERE id = ?
     `).run(
@@ -256,7 +282,7 @@ async function startServer() {
 
     db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
     if (videos && Array.isArray(videos)) {
-      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtubeUrl) VALUES (?, ?, ?, ?)");
+      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
       for (const v of videos) {
         stmt.run(id, v.title, v.description, v.youtubeUrl);
       }
@@ -276,7 +302,7 @@ async function startServer() {
     const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
     db.prepare(`
       UPDATE projects SET 
-        title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnailUrl = ?,
+        title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
         tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?
       WHERE id = ?
     `).run(
@@ -296,7 +322,7 @@ async function startServer() {
 
     db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
     if (videos && Array.isArray(videos)) {
-      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtubeUrl) VALUES (?, ?, ?, ?)");
+      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
       for (const v of videos) {
         stmt.run(id, v.title, v.description, v.youtubeUrl);
       }
