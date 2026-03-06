@@ -150,6 +150,12 @@ export default function Admin() {
     
     if (await handleAuthError(res)) return;
 
+    if (!res.ok) {
+      const errorData = await res.json();
+      alert(`저장 실패: ${errorData.error || "알 수 없는 오류"}\n${errorData.details || ""}`);
+      return;
+    }
+
     setEditingProject(null);
     fetch("api/projects").then(res => res.json()).then(setProjects);
     alert("저장되었습니다.");

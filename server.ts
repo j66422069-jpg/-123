@@ -29,7 +29,11 @@ db.exec(`
     tech_camera TEXT,
     tech_lens TEXT,
     tech_lighting TEXT,
-    tech_color TEXT
+    tech_color TEXT,
+    link TEXT,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS project_videos (
@@ -61,6 +65,20 @@ try {
   if (videoCols.some(c => c.name === "youtubeUrl") && !videoCols.some(c => c.name === "youtube_url")) {
     db.exec("ALTER TABLE project_videos RENAME COLUMN youtubeUrl TO youtube_url");
     console.log("Migrated project_videos table: youtubeUrl -> youtube_url");
+  }
+
+  // Add missing columns if they don't exist
+  if (!projectCols.some(c => c.name === "link")) {
+    db.exec("ALTER TABLE projects ADD COLUMN link TEXT");
+  }
+  if (!projectCols.some(c => c.name === "description")) {
+    db.exec("ALTER TABLE projects ADD COLUMN description TEXT");
+  }
+  if (!projectCols.some(c => c.name === "created_at")) {
+    db.exec("ALTER TABLE projects ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+  }
+  if (!projectCols.some(c => c.name === "updated_at")) {
+    db.exec("ALTER TABLE projects ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP");
   }
 } catch (e) {
   console.error("Migration failed:", e);
@@ -229,105 +247,162 @@ async function startServer() {
   });
 
   app.post("/api/projects", (req, res) => {
-    const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
-    const info = db.prepare(`
-      INSERT INTO projects (title, year, type, role, summary, featured, thumbnail_url, tech_camera, tech_lens, tech_lighting, tech_color)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      title ?? null, 
-      year ?? null, 
-      type ?? null, 
-      role ?? null, 
-      summary ?? null, 
-      featured ? 1 : 0, 
-      thumbnailUrl ?? null, 
-      tech?.camera ?? null, 
-      tech?.lens ?? null, 
-      tech?.lighting ?? null, 
-      tech?.color ?? null
-    );
-    
-    const projectId = info.lastInsertRowid;
-    if (videos && Array.isArray(videos)) {
-      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
-      for (const v of videos) {
-        stmt.run(projectId, v.title, v.description, v.youtubeUrl);
+    try {
+      const body = req.body;
+      const row = {
+        title: body.title ?? "",
+        year: body.year ?? null,
+        type: body.type ?? null,
+        role: body.role ?? null,
+        summary: body.summary ?? null,
+        featured: body.featured ? 1 : 0,
+        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        tech_camera: body.techCamera ?? body.tech?.camera ?? body.tech_camera ?? null,
+        tech_lens: body.techLens ?? body.tech?.lens ?? body.tech_lens ?? null,
+        tech_lighting: body.techLighting ?? body.tech?.lighting ?? body.tech_lighting ?? null,
+        tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
+        link: body.link ?? null,
+        description: body.description ?? null,
+        updated_at: new Date().toISOString()
+      };
+
+      const info = db.prepare(`
+        INSERT INTO projects (
+          title, year, type, role, summary, featured, thumbnail_url, 
+          tech_camera, tech_lens, tech_lighting, tech_color, 
+          link, description, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
+        row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
+        row.link, row.description, row.updated_at
+      );
+      
+      const projectId = info.lastInsertRowid;
+      if (body.videos && Array.isArray(body.videos)) {
+        const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
+        for (const v of body.videos) {
+          stmt.run(projectId, v.title, v.description, v.youtubeUrl ?? v.youtube_url);
+        }
       }
+      res.json({ id: projectId });
+    } catch (error) {
+      console.error("Error creating project:", error);
+      res.status(500).json({ error: "Failed to create project", details: error instanceof Error ? error.message : String(error) });
     }
-    res.json({ id: projectId });
   });
 
   app.put("/api/projects", (req, res) => {
-    const id = req.query.id;
-    const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
-    db.prepare(`
-      UPDATE projects SET 
-        title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
-        tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?
-      WHERE id = ?
-    `).run(
-      title ?? null, 
-      year ?? null, 
-      type ?? null, 
-      role ?? null, 
-      summary ?? null, 
-      featured ? 1 : 0, 
-      thumbnailUrl ?? null, 
-      tech?.camera ?? null, 
-      tech?.lens ?? null, 
-      tech?.lighting ?? null, 
-      tech?.color ?? null, 
-      id
-    );
+    try {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: "Missing project id" });
+      
+      const body = req.body;
+      const row = {
+        title: body.title ?? "",
+        year: body.year ?? null,
+        type: body.type ?? null,
+        role: body.role ?? null,
+        summary: body.summary ?? null,
+        featured: body.featured ? 1 : 0,
+        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        tech_camera: body.techCamera ?? body.tech?.camera ?? body.tech_camera ?? null,
+        tech_lens: body.techLens ?? body.tech?.lens ?? body.tech_lens ?? null,
+        tech_lighting: body.techLighting ?? body.tech?.lighting ?? body.tech_lighting ?? null,
+        tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
+        link: body.link ?? null,
+        description: body.description ?? null,
+        updated_at: new Date().toISOString()
+      };
 
-    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
-    if (videos && Array.isArray(videos)) {
-      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
-      for (const v of videos) {
-        stmt.run(id, v.title, v.description, v.youtubeUrl);
+      db.prepare(`
+        UPDATE projects SET 
+          title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
+          tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
+          link = ?, description = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
+        row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
+        row.link, row.description, row.updated_at,
+        id
+      );
+
+      db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
+      if (body.videos && Array.isArray(body.videos)) {
+        const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
+        for (const v of body.videos) {
+          stmt.run(id, v.title, v.description, v.youtubeUrl ?? v.youtube_url);
+        }
       }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ error: "Failed to update project", details: error instanceof Error ? error.message : String(error) });
     }
-    res.json({ success: true });
   });
 
   app.delete("/api/projects", (req, res) => {
-    const id = req.query.id;
-    db.prepare("DELETE FROM projects WHERE id = ?").run(id);
-    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
-    res.json({ success: true });
+    try {
+      const id = req.query.id;
+      db.prepare("DELETE FROM projects WHERE id = ?").run(id);
+      db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      res.status(500).json({ error: "Failed to delete project" });
+    }
   });
 
   app.put("/api/projects/:id", (req, res) => {
-    const id = req.params.id || req.query.id;
-    const { title, year, type, role, summary, featured, thumbnailUrl, tech, videos } = req.body;
-    db.prepare(`
-      UPDATE projects SET 
-        title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
-        tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?
-      WHERE id = ?
-    `).run(
-      title ?? null, 
-      year ?? null, 
-      type ?? null, 
-      role ?? null, 
-      summary ?? null, 
-      featured ? 1 : 0, 
-      thumbnailUrl ?? null, 
-      tech?.camera ?? null, 
-      tech?.lens ?? null, 
-      tech?.lighting ?? null, 
-      tech?.color ?? null, 
-      id
-    );
+    try {
+      const id = req.params.id || req.query.id;
+      if (!id) return res.status(400).json({ error: "Missing project id" });
 
-    db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
-    if (videos && Array.isArray(videos)) {
-      const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
-      for (const v of videos) {
-        stmt.run(id, v.title, v.description, v.youtubeUrl);
+      const body = req.body;
+      const row = {
+        title: body.title ?? "",
+        year: body.year ?? null,
+        type: body.type ?? null,
+        role: body.role ?? null,
+        summary: body.summary ?? null,
+        featured: body.featured ? 1 : 0,
+        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        tech_camera: body.techCamera ?? body.tech?.camera ?? body.tech_camera ?? null,
+        tech_lens: body.techLens ?? body.tech?.lens ?? body.tech_lens ?? null,
+        tech_lighting: body.techLighting ?? body.tech?.lighting ?? body.tech_lighting ?? null,
+        tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
+        link: body.link ?? null,
+        description: body.description ?? null,
+        updated_at: new Date().toISOString()
+      };
+
+      db.prepare(`
+        UPDATE projects SET 
+          title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
+          tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
+          link = ?, description = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
+        row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
+        row.link, row.description, row.updated_at,
+        id
+      );
+
+      db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
+      if (body.videos && Array.isArray(body.videos)) {
+        const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
+        for (const v of body.videos) {
+          stmt.run(id, v.title, v.description, v.youtubeUrl ?? v.youtube_url);
+        }
       }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ error: "Failed to update project", details: error instanceof Error ? error.message : String(error) });
     }
-    res.json({ success: true });
   });
 
   app.delete("/api/projects/:id", (req, res) => {
