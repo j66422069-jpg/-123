@@ -539,6 +539,17 @@ export default function Admin() {
                               }}
                               className="w-full px-3 py-2 border border-black/10 text-xs focus:outline-none"
                             />
+                            <input
+                              type="text"
+                              placeholder="Video Thumbnail URL (Optional)"
+                              value={v.thumbnailUrl || ""}
+                              onChange={(e) => {
+                                const newVideos = [...(editingProject.videos || [])];
+                                newVideos[idx] = { ...newVideos[idx], thumbnailUrl: e.target.value };
+                                setEditingProject({ ...editingProject, videos: newVideos });
+                              }}
+                              className="w-full px-3 py-2 border border-black/10 text-xs focus:outline-none"
+                            />
                             <textarea
                               placeholder="Description"
                               value={v.description}

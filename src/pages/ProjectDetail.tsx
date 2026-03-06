@@ -78,6 +78,18 @@ export default function ProjectDetail() {
               {project.year}
             </span>
           </div>
+          
+          {project.thumbnailUrl && (
+            <div className="aspect-[21/9] w-full bg-black/5 mb-12 overflow-hidden border border-black/5">
+              <img 
+                src={project.thumbnailUrl} 
+                alt={project.title} 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          )}
+
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6">
             {project.title}
           </h1>

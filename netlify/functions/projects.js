@@ -36,12 +36,30 @@ export const handler = async (event) => {
         const { data: videos, error: vError } = await supabase
           .from('project_videos')
           .select('*')
-          .eq('project_id', id);
+          .eq('project_id', id)
+          .order('sort_order', { ascending: true });
         if (vError) throw vError;
+
+        const mappedProject = {
+          ...project,
+          thumbnailUrl: project.thumbnail_url,
+          tech: {
+            camera: project.tech_camera,
+            lens: project.tech_lens,
+            lighting: project.tech_lighting,
+            color: project.tech_color
+          },
+          videos: videos.map(v => ({
+            ...v,
+            videoUrl: v.video_url,
+            youtubeUrl: v.video_url,
+            thumbnailUrl: v.thumbnail_url
+          }))
+        };
 
         return {
           statusCode: 200,
-          body: JSON.stringify({ ...project, videos }),
+          body: JSON.stringify(mappedProject),
         };
       } else {
         const { data, error } = await supabase
@@ -49,9 +67,21 @@ export const handler = async (event) => {
           .select('*')
           .order('year', { ascending: false });
         if (error) throw error;
+
+        const mappedData = data.map(p => ({
+          ...p,
+          thumbnailUrl: p.thumbnail_url,
+          tech: {
+            camera: p.tech_camera,
+            lens: p.tech_lens,
+            lighting: p.tech_lighting,
+            color: p.tech_color
+          }
+        }));
+
         return {
           statusCode: 200,
-          body: JSON.stringify(data),
+          body: JSON.stringify(mappedData),
         };
       }
     }
@@ -92,11 +122,12 @@ export const handler = async (event) => {
       }
 
       if (videos && Array.isArray(videos)) {
-        const videoRows = videos.map(v => ({
+        const videoRows = videos.map((v, idx) => ({
           project_id: project.id,
           title: v.title ?? null,
-          video_url: v.videoUrl ?? v.video_url ?? null,
-          thumbnail_url: v.thumbnailUrl ?? v.thumbnail_url ?? null
+          video_url: v.youtubeUrl ?? v.videoUrl ?? v.video_url ?? null,
+          thumbnail_url: v.thumbnailUrl ?? v.thumbnail_url ?? null,
+          sort_order: idx
         }));
         const { error: vError } = await supabase.from('project_videos').insert(videoRows);
         if (vError) {
@@ -142,11 +173,12 @@ export const handler = async (event) => {
       // Update videos: delete and re-insert
       await supabase.from('project_videos').delete().eq('project_id', id);
       if (videos && Array.isArray(videos)) {
-        const videoRows = videos.map(v => ({
+        const videoRows = videos.map((v, idx) => ({
           project_id: id,
           title: v.title ?? null,
-          video_url: v.videoUrl ?? v.video_url ?? null,
-          thumbnail_url: v.thumbnailUrl ?? v.thumbnail_url ?? null
+          video_url: v.youtubeUrl ?? v.videoUrl ?? v.video_url ?? null,
+          thumbnail_url: v.thumbnailUrl ?? v.thumbnail_url ?? null,
+          sort_order: idx
         }));
         const { error: vError } = await supabase.from('project_videos').insert(videoRows);
         if (vError) {
