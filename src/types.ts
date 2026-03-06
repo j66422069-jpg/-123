@@ -32,6 +32,7 @@ export interface ProjectData {
   role: string;
   summary: string;
   featured: boolean;
+  sort_order?: number;
   thumbnailUrl: string;
   tech: {
     camera: string;

@@ -25,6 +25,7 @@ db.exec(`
     role TEXT,
     summary TEXT,
     featured INTEGER DEFAULT 0,
+    sort_order INTEGER DEFAULT 0,
     thumbnail_url TEXT,
     tech_camera TEXT,
     tech_lens TEXT,
@@ -79,6 +80,9 @@ try {
   }
   if (!projectCols.some(c => c.name === "updated_at")) {
     db.exec("ALTER TABLE projects ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+  }
+  if (!projectCols.some(c => c.name === "sort_order")) {
+    db.exec("ALTER TABLE projects ADD COLUMN sort_order INTEGER DEFAULT 0");
   }
 } catch (e) {
   console.error("Migration failed:", e);
@@ -223,7 +227,7 @@ async function startServer() {
       }
       return;
     }
-    const projects = db.prepare("SELECT * FROM projects ORDER BY year DESC").all() as any[];
+    const projects = db.prepare("SELECT * FROM projects ORDER BY sort_order ASC, year DESC").all() as any[];
     const transformed = projects.map(p => ({
       ...p,
       thumbnailUrl: p.thumbnail_url,
@@ -274,6 +278,7 @@ async function startServer() {
         tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
         link: body.link ?? null,
         description: body.description ?? null,
+        sort_order: body.sort_order ?? 0,
         updated_at: new Date().toISOString()
       };
 
@@ -281,13 +286,13 @@ async function startServer() {
         INSERT INTO projects (
           title, year, type, role, summary, featured, thumbnail_url, 
           tech_camera, tech_lens, tech_lighting, tech_color, 
-          link, description, updated_at
+          link, description, sort_order, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
         row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
-        row.link, row.description, row.updated_at
+        row.link, row.description, row.sort_order, row.updated_at
       );
       
       const projectId = info.lastInsertRowid;
@@ -324,6 +329,7 @@ async function startServer() {
         tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
         link: body.link ?? null,
         description: body.description ?? null,
+        sort_order: body.sort_order !== undefined ? body.sort_order : 0,
         updated_at: new Date().toISOString()
       };
 
@@ -331,12 +337,12 @@ async function startServer() {
         UPDATE projects SET 
           title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
           tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
-          link = ?, description = ?, updated_at = ?
+          link = ?, description = ?, sort_order = ?, updated_at = ?
         WHERE id = ?
       `).run(
         row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
         row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
-        row.link, row.description, row.updated_at,
+        row.link, row.description, row.sort_order, row.updated_at,
         id
       );
 
@@ -386,6 +392,7 @@ async function startServer() {
         tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
         link: body.link ?? null,
         description: body.description ?? null,
+        sort_order: body.sort_order !== undefined ? body.sort_order : 0,
         updated_at: new Date().toISOString()
       };
 
@@ -393,12 +400,12 @@ async function startServer() {
         UPDATE projects SET 
           title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
           tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
-          link = ?, description = ?, updated_at = ?
+          link = ?, description = ?, sort_order = ?, updated_at = ?
         WHERE id = ?
       `).run(
         row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
         row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
-        row.link, row.description, row.updated_at,
+        row.link, row.description, row.sort_order, row.updated_at,
         id
       );
 
@@ -421,6 +428,31 @@ async function startServer() {
     db.prepare("DELETE FROM projects WHERE id = ?").run(id);
     db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
     res.json({ success: true });
+  });
+
+  app.post("/api/projects/reorder", (req, res) => {
+    try {
+      const { orders } = req.body; // Array of { id: number, sort_order: number }
+      if (!Array.isArray(orders)) {
+        return res.status(400).json({ error: "Invalid orders format" });
+      }
+
+      const updateStmt = db.prepare("UPDATE projects SET sort_order = ? WHERE id = ?");
+      const transaction = db.transaction((items) => {
+        for (const item of items) {
+          updateStmt.run(item.sort_order, item.id);
+        }
+      });
+
+      transaction(orders);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering projects:", error);
+      res.status(500).json({ 
+        error: "Failed to reorder projects", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
   });
 
   // Equipment

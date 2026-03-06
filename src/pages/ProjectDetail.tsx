@@ -132,7 +132,7 @@ export default function ProjectDetail() {
               </div>
               <div>
                 <h4 className="text-[10px] font-bold tracking-widest text-black/40 uppercase mb-1">Camera</h4>
-                <p className="text-sm font-bold">{project.tech?.camera || "—"}</p>
+                <p className="text-sm font-bold whitespace-pre-line">{project.tech?.camera || "—"}</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -141,7 +141,7 @@ export default function ProjectDetail() {
               </div>
               <div>
                 <h4 className="text-[10px] font-bold tracking-widest text-black/40 uppercase mb-1">Lens</h4>
-                <p className="text-sm font-bold">{project.tech?.lens || "—"}</p>
+                <p className="text-sm font-bold whitespace-pre-line">{project.tech?.lens || "—"}</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -150,7 +150,7 @@ export default function ProjectDetail() {
               </div>
               <div>
                 <h4 className="text-[10px] font-bold tracking-widest text-black/40 uppercase mb-1">Lighting</h4>
-                <p className="text-sm font-bold">{project.tech?.lighting || "—"}</p>
+                <p className="text-sm font-bold whitespace-pre-line">{project.tech?.lighting || "—"}</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -159,7 +159,7 @@ export default function ProjectDetail() {
               </div>
               <div>
                 <h4 className="text-[10px] font-bold tracking-widest text-black/40 uppercase mb-1">Color</h4>
-                <p className="text-sm font-bold">{project.tech?.color || "—"}</p>
+                <p className="text-sm font-bold whitespace-pre-line">{project.tech?.color || "—"}</p>
               </div>
             </div>
           </div>

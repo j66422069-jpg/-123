@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Plus, Trash2, Save, Edit2, X, Upload, PlusCircle, Trash } from "lucide-react";
+import { Plus, Trash2, Save, Edit2, X, Upload, PlusCircle, Trash, ArrowUp, ArrowDown } from "lucide-react";
 import { HomeData, AboutData, ProjectData, EquipmentItem, ContactData, VideoData } from "../types";
 import { useContent } from "../context/ContentContext";
 
@@ -23,6 +23,7 @@ export default function Admin() {
   const [contact, setContact] = useState<ContactData>({
     email: "", instagramUrl: "", instagramText: "", phone: "", resumeUrl: ""
   });
+  const [hasOrderChanged, setHasOrderChanged] = useState(false);
 
   useEffect(() => {
     const token = sessionStorage.getItem("admin_token");
@@ -224,11 +225,20 @@ export default function Admin() {
     const method = editingProject.id ? "PUT" : "POST";
     const url = editingProject.id ? `api/projects?id=${editingProject.id}` : "api/projects";
     
+    // For new projects, set sort_order to be at the top
+    const projectToSave = { ...editingProject };
+    if (!projectToSave.id) {
+      const minOrder = projects.length > 0 
+        ? Math.min(...projects.map(p => p.sort_order || 0)) 
+        : 0;
+      projectToSave.sort_order = minOrder - 1;
+    }
+    
     try {
       const res = await fetch(url, {
         method,
         headers: getAuthHeaders(),
-        body: JSON.stringify(editingProject),
+        body: JSON.stringify(projectToSave),
       });
       
       if (await handleAuthError(res)) return;
@@ -251,10 +261,57 @@ export default function Admin() {
       setProjects(newProjects);
       updateProjects(newProjects);
       setEditingProject(null);
+      setHasOrderChanged(false);
       alert("저장되었습니다.");
     } catch (error) {
       console.error("Save Project error:", error);
       alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const moveProject = (index: number, direction: 'up' | 'down') => {
+    const newProjects = [...projects];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newProjects.length) return;
+    
+    [newProjects[index], newProjects[targetIndex]] = [newProjects[targetIndex], newProjects[index]];
+    
+    setProjects(newProjects);
+    setHasOrderChanged(true);
+  };
+
+  const saveProjectOrder = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    
+    try {
+      const orders = projects.map((p, index) => ({
+        id: p.id,
+        sort_order: index
+      }));
+      
+      const res = await fetch("api/projects/reorder", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ orders }),
+      });
+      
+      if (await handleAuthError(res)) return;
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "순서 저장에 실패했습니다.");
+      }
+      
+      updateProjects(projects);
+      setHasOrderChanged(false);
+      alert("순서가 저장되었습니다.");
+    } catch (error: any) {
+      console.error("Save Project Order error:", error);
+      alert(`순서 저장 실패: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -514,16 +571,27 @@ export default function Admin() {
             <div className="space-y-8">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-bold">PROJECT 관리</h3>
-                <button
-                  onClick={() => setEditingProject({
-                    title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, thumbnailUrl: "",
-                    tech: { camera: "", lens: "", lighting: "", color: "" },
-                    videos: []
-                  })}
-                  className="px-6 py-3 bg-black text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2"
-                >
-                  <Plus size={14} /> ADD PROJECT
-                </button>
+                <div className="flex gap-4">
+                  {hasOrderChanged && (
+                    <button
+                      onClick={saveProjectOrder}
+                      disabled={isSaving}
+                      className="px-6 py-3 bg-emerald-600 text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:bg-emerald-700 transition-colors"
+                    >
+                      <Save size={14} /> SAVE ORDER
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setEditingProject({
+                      title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, thumbnailUrl: "",
+                      tech: { camera: "", lens: "", lighting: "", color: "" },
+                      videos: []
+                    })}
+                    className="px-6 py-3 bg-black text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2"
+                  >
+                    <Plus size={14} /> ADD PROJECT
+                  </button>
+                </div>
               </div>
 
               {editingProject ? (
@@ -620,14 +688,13 @@ export default function Admin() {
                       {["camera", "lens", "lighting", "color"].map((key) => (
                         <div key={key}>
                           <label className="block text-[8px] font-bold tracking-widest uppercase text-black/40 mb-1">{key}</label>
-                          <input
-                            type="text"
+                          <textarea
                             value={(editingProject.tech as any)?.[key] || ""}
                             onChange={(e) => setEditingProject({
                               ...editingProject,
                               tech: { ...(editingProject.tech || {}), [key]: e.target.value }
                             })}
-                            className="w-full px-2 py-2 border border-black/10 text-xs focus:outline-none focus:border-black"
+                            className="w-full px-2 py-2 border border-black/10 text-xs focus:outline-none focus:border-black h-20 resize-none"
                           />
                         </div>
                       ))}
@@ -721,9 +788,25 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
-                  {(Array.isArray(projects) ? projects : []).map((p) => (
+                  {(Array.isArray(projects) ? projects : []).map((p, index) => (
                     <div key={p.id} className="flex items-center justify-between p-6 border border-black/5 hover:border-black/20 transition-colors">
                       <div className="flex items-center gap-6">
+                        <div className="flex flex-col gap-1">
+                          <button 
+                            onClick={() => moveProject(index, 'up')}
+                            disabled={index === 0}
+                            className={`p-1 ${index === 0 ? 'text-black/5' : 'text-black/20 hover:text-black'}`}
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button 
+                            onClick={() => moveProject(index, 'down')}
+                            disabled={index === projects.length - 1}
+                            className={`p-1 ${index === projects.length - 1 ? 'text-black/5' : 'text-black/20 hover:text-black'}`}
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
                         <div className="w-20 h-12 bg-black/5 overflow-hidden">
                           {p.thumbnailUrl && <img src={p.thumbnailUrl} className="w-full h-full object-cover" />}
                         </div>
