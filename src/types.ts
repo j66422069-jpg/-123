@@ -25,6 +25,8 @@ export interface ProjectData {
   title: string;
   year: string;
   type: string;
+  category?: string;
+  description?: string;
   role: string;
   summary: string;
   featured: boolean;

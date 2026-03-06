@@ -33,43 +33,49 @@ export default function Admin() {
     if (isLoggedIn) {
       const fetchData = async () => {
         try {
-          const [homeRes, aboutRes, projectsRes, equipmentRes, contactRes] = await Promise.all([
-            fetch("api/content?key=home"),
-            fetch("api/content?key=about"),
+          const [contentRes, projectsRes, equipmentRes] = await Promise.all([
+            fetch("api/content"),
             fetch("api/projects"),
-            fetch("api/equipment"),
-            fetch("api/content?key=contact")
+            fetch("api/equipment")
           ]);
 
-          if (homeRes.ok) {
-            const json = await homeRes.json();
-            if (json) setHome(prev => ({ ...prev, ...json }));
-          } else {
-            console.error("Home content fetch failed:", homeRes.statusText);
+          if (contentRes.ok) {
+            const allContent = await contentRes.json();
+            
+            // Map Home
+            setHome({
+              name: allContent.home_name || "",
+              role: allContent.home_role || "",
+              tagline: allContent.home_tagline || "",
+              resumeUrl: allContent.home_resumeUrl || "",
+              featuredProjectIds: Array.isArray(allContent.home_featuredProjectIds) ? allContent.home_featuredProjectIds : []
+            });
+
+            // Map About
+            setAbout({
+              profileImageUrl: allContent.about_profileImageUrl || "",
+              introText: allContent.about_introText || "",
+              capabilities: Array.isArray(allContent.about_capabilities) ? allContent.about_capabilities : [],
+              careers: Array.isArray(allContent.about_careers) ? allContent.about_careers : []
+            });
+
+            // Map Contact
+            setContact({
+              email: allContent.contact_email || "",
+              instagramUrl: allContent.contact_instagramUrl || "",
+              instagramText: allContent.contact_instagramText || "",
+              phone: allContent.contact_phone || "",
+              resumeUrl: allContent.contact_resumeUrl || ""
+            });
           }
-          if (aboutRes.ok) {
-            const json = await aboutRes.json();
-            if (json) setAbout(prev => ({ ...prev, ...json }));
-          } else {
-            console.error("About content fetch failed:", aboutRes.statusText);
-          }
+
           if (projectsRes.ok) {
             const json = await projectsRes.json();
             if (Array.isArray(json)) setProjects(json);
-          } else {
-            console.error("Projects fetch failed:", projectsRes.statusText);
           }
           if (equipmentRes.ok) {
             const json = await equipmentRes.json();
             if (Array.isArray(json)) setEquipment(json);
-          } else {
-            console.error("Equipment fetch failed:", equipmentRes.statusText);
-          }
-          if (contactRes.ok) {
-            const json = await contactRes.json();
-            if (json) setContact(prev => ({ ...prev, ...json }));
-          } else {
-            console.error("Contact content fetch failed:", contactRes.statusText);
           }
         } catch (error) {
           console.error("Failed to fetch admin data:", error);
@@ -118,33 +124,77 @@ export default function Admin() {
   };
 
   const saveHome = async () => {
-    const res = await fetch("api/content", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ key: "home", value: home }),
-    });
-    if (await handleAuthError(res)) return;
-    alert("저장되었습니다.");
+    try {
+      const res = await fetch("api/content", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          home_name: home.name,
+          home_role: home.role,
+          home_tagline: home.tagline,
+          home_resumeUrl: home.resumeUrl,
+          home_featuredProjectIds: home.featuredProjectIds
+        }),
+      });
+      if (await handleAuthError(res)) return;
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "저장에 실패했습니다.");
+      }
+      alert("저장되었습니다.");
+    } catch (error: any) {
+      console.error("Save Home error:", error);
+      alert(`저장 실패: ${error.message}`);
+    }
   };
 
   const saveAbout = async () => {
-    const res = await fetch("api/content", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ key: "about", value: about }),
-    });
-    if (await handleAuthError(res)) return;
-    alert("저장되었습니다.");
+    try {
+      const res = await fetch("api/content", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          about_profileImageUrl: about.profileImageUrl,
+          about_introText: about.introText,
+          about_capabilities: about.capabilities,
+          about_careers: about.careers
+        }),
+      });
+      if (await handleAuthError(res)) return;
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "저장에 실패했습니다.");
+      }
+      alert("저장되었습니다.");
+    } catch (error: any) {
+      console.error("Save About error:", error);
+      alert(`저장 실패: ${error.message}`);
+    }
   };
 
   const saveContact = async () => {
-    const res = await fetch("api/content", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ key: "contact", value: contact }),
-    });
-    if (await handleAuthError(res)) return;
-    alert("저장되었습니다.");
+    try {
+      const res = await fetch("api/content", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          contact_email: contact.email,
+          contact_instagramUrl: contact.instagramUrl,
+          contact_instagramText: contact.instagramText,
+          contact_phone: contact.phone,
+          contact_resumeUrl: contact.resumeUrl
+        }),
+      });
+      if (await handleAuthError(res)) return;
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "저장에 실패했습니다.");
+      }
+      alert("저장되었습니다.");
+    } catch (error: any) {
+      console.error("Save Contact error:", error);
+      alert(`저장 실패: ${error.message}`);
+    }
   };
 
   const saveProject = async () => {
@@ -380,7 +430,7 @@ export default function Admin() {
                 <h3 className="text-xl font-bold">PROJECT 관리</h3>
                 <button
                   onClick={() => setEditingProject({
-                    title: "", year: "", type: "", role: "", summary: "", featured: false, thumbnailUrl: "",
+                    title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, thumbnailUrl: "",
                     tech: { camera: "", lens: "", lighting: "", color: "" },
                     videos: []
                   })}
@@ -420,8 +470,8 @@ export default function Admin() {
                       <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">형태 (예: 단편영화, 광고)</label>
                       <input
                         type="text"
-                        value={editingProject.type || ""}
-                        onChange={(e) => setEditingProject({ ...editingProject, type: e.target.value })}
+                        value={editingProject.category || ""}
+                        onChange={(e) => setEditingProject({ ...editingProject, category: e.target.value })}
                         className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black"
                       />
                     </div>
@@ -442,6 +492,15 @@ export default function Admin() {
                       value={editingProject.summary || ""}
                       onChange={(e) => setEditingProject({ ...editingProject, summary: e.target.value })}
                       className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-24"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">Description</label>
+                    <textarea
+                      value={editingProject.description || ""}
+                      onChange={(e) => setEditingProject({ ...editingProject, description: e.target.value })}
+                      className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-48"
                     />
                   </div>
 

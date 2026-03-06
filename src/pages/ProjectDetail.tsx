@@ -72,23 +72,12 @@ export default function ProjectDetail() {
         <div className="mb-20">
           <div className="flex flex-wrap gap-3 mb-6">
             <span className="px-3 py-1 bg-black text-white text-[10px] font-bold tracking-[0.2em] uppercase">
-              {project.type}
+              {project.category || ""}
             </span>
             <span className="px-3 py-1 border border-black/10 text-[10px] font-bold tracking-[0.2em] uppercase">
               {project.year}
             </span>
           </div>
-          
-          {project.thumbnailUrl && (
-            <div className="aspect-[21/9] w-full bg-black/5 mb-12 overflow-hidden border border-black/5">
-              <img 
-                src={project.thumbnailUrl} 
-                alt={project.title} 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          )}
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6">
             {project.title}
@@ -96,9 +85,18 @@ export default function ProjectDetail() {
           <p className="text-xl text-black/60 font-medium tracking-tight mb-8">
             {project.role}
           </p>
-          <p className="text-lg text-black/70 leading-relaxed max-w-3xl whitespace-pre-wrap">
+          <p className="text-lg text-black/70 leading-relaxed max-w-3xl whitespace-pre-wrap mb-12">
             {project.summary}
           </p>
+
+          {project.description && (
+            <div className="mt-12 pt-12 border-t border-black/5">
+              <h2 className="text-xs font-bold tracking-[0.3em] text-black/40 uppercase mb-8">Description</h2>
+              <p className="text-base text-black/70 leading-relaxed max-w-3xl whitespace-pre-wrap">
+                {project.description}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Video Section */}

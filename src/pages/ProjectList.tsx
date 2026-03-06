@@ -68,7 +68,7 @@ export default function ProjectList() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <span className="px-2 py-1 bg-black/5 text-[10px] font-bold tracking-widest uppercase text-black/40">
-                      {project.type}
+                      {project.category || ""}
                     </span>
                     <span className="px-2 py-1 bg-black/5 text-[10px] font-bold tracking-widest uppercase text-black/40">
                       {project.role}

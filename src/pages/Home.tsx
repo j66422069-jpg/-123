@@ -19,22 +19,24 @@ export default function Home() {
     const fetchData = async () => {
       try {
         const [contentRes, projectsRes] = await Promise.all([
-          fetch("api/content?key=home"),
+          fetch("api/content"),
           fetch("api/projects")
         ]);
 
         if (contentRes.ok) {
-          const contentJson = await contentRes.json();
-          if (contentJson) setData(prev => ({ ...prev, ...contentJson }));
-        } else {
-          console.error("Home content fetch failed:", contentRes.statusText);
+          const allContent = await contentRes.json();
+          setData({
+            name: allContent.home_name || "Director Name",
+            role: allContent.home_role || "Cinematographer / Director",
+            tagline: allContent.home_tagline || "Capturing moments that tell a story.",
+            resumeUrl: allContent.home_resumeUrl || "",
+            featuredProjectIds: Array.isArray(allContent.home_featuredProjectIds) ? allContent.home_featuredProjectIds : []
+          });
         }
 
         if (projectsRes.ok) {
           const projectsJson = await projectsRes.json();
           if (Array.isArray(projectsJson)) setProjects(projectsJson);
-        } else {
-          console.error("Projects fetch failed:", projectsRes.statusText);
         }
       } catch (error) {
         console.error("Failed to fetch home data:", error);

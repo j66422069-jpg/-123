@@ -32,7 +32,7 @@ export const handler = async (event) => {
           .eq('key', key)
           .single();
         if (error) {
-          if (error.code === 'PGRST116') return { statusCode: 200, body: JSON.stringify({}) };
+          if (error.code === 'PGRST116') return { statusCode: 200, body: JSON.stringify(null) };
           throw error;
         }
         return { statusCode: 200, body: JSON.stringify(data.value) };
@@ -52,12 +52,22 @@ export const handler = async (event) => {
     }
 
     if (httpMethod === 'POST') {
-      const { key, value } = JSON.parse(body || '{}');
-      if (!key || !value) throw new Error('Key and Value are required');
+      const bodyData = JSON.parse(body || '{}');
+      
+      // Handle both single {key, value} and multiple {key: value} pairs
+      let pairs = [];
+      if (bodyData.key && bodyData.value !== undefined) {
+        pairs.push({ key: bodyData.key, value: bodyData.value });
+      } else {
+        pairs = Object.entries(bodyData).map(([key, value]) => ({ key, value }));
+      }
+
+      if (pairs.length === 0) throw new Error('No data provided');
 
       const { error } = await supabase
         .from('site_content')
-        .upsert({ key, value }, { onConflict: 'key' });
+        .upsert(pairs, { onConflict: 'key' });
+      
       if (error) throw error;
 
       return { statusCode: 200, body: JSON.stringify({ success: true }) };

@@ -17,12 +17,16 @@ export default function Contact() {
   useEffect(() => {
     const fetchContact = async () => {
       try {
-        const res = await fetch("api/content?key=contact");
+        const res = await fetch("api/content");
         if (res.ok) {
-          const json = await res.json();
-          if (json) setData(prev => ({ ...prev, ...json }));
-        } else {
-          console.error("Contact fetch failed:", res.statusText);
+          const allContent = await res.json();
+          setData({
+            email: allContent.contact_email || "email@example.com",
+            instagramUrl: allContent.contact_instagramUrl || "https://instagram.com",
+            instagramText: allContent.contact_instagramText || "@cinematographer",
+            phone: allContent.contact_phone || "010-0000-0000",
+            resumeUrl: allContent.contact_resumeUrl || ""
+          });
         }
       } catch (error) {
         console.error("Failed to fetch contact:", error);

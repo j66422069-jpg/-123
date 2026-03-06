@@ -14,12 +14,15 @@ export default function About() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("api/content?key=about");
+        const res = await fetch("api/content");
         if (res.ok) {
-          const json = await res.json();
-          if (json) setData(prev => ({ ...prev, ...json }));
-        } else {
-          console.error("About content fetch failed:", res.statusText);
+          const allContent = await res.json();
+          setData({
+            profileImageUrl: allContent.about_profileImageUrl || "",
+            introText: allContent.about_introText || "",
+            capabilities: Array.isArray(allContent.about_capabilities) ? allContent.about_capabilities : [],
+            careers: Array.isArray(allContent.about_careers) ? allContent.about_careers : []
+          });
         }
       } catch (error) {
         console.error("Failed to fetch about data:", error);

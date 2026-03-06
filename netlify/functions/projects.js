@@ -43,6 +43,8 @@ export const handler = async (event) => {
         const mappedProject = {
           ...project,
           thumbnailUrl: project.thumbnail_url,
+          category: project.category || "",
+          description: project.description || "",
           tech: {
             camera: project.tech_camera,
             lens: project.tech_lens,
@@ -71,6 +73,8 @@ export const handler = async (event) => {
         const mappedData = data.map(p => ({
           ...p,
           thumbnailUrl: p.thumbnail_url,
+          category: p.category || "",
+          description: p.description || "",
           tech: {
             camera: p.tech_camera,
             lens: p.tech_lens,
@@ -96,6 +100,8 @@ export const handler = async (event) => {
       const { videos, tech, ...body } = payload;
       const row = {
         title: body.title ?? "",
+        description: body.description ?? null,
+        category: body.category ?? body.format ?? null,
         year: body.year ?? null,
         featured: body.featured ?? false,
         role: body.role ?? null,
@@ -106,7 +112,6 @@ export const handler = async (event) => {
         tech_lighting: tech?.lighting ?? body.techLighting ?? body.tech_lighting ?? null,
         tech_color: tech?.color ?? body.techColor ?? body.tech_color ?? null,
         link: body.link ?? null,
-        description: body.description ?? null,
         updated_at: new Date().toISOString()
       };
 
@@ -146,6 +151,8 @@ export const handler = async (event) => {
       const { videos, tech, ...body } = payload;
       const row = {
         title: body.title ?? "",
+        description: body.description ?? null,
+        category: body.category ?? body.format ?? null,
         year: body.year ?? null,
         featured: body.featured ?? false,
         role: body.role ?? null,
@@ -156,7 +163,6 @@ export const handler = async (event) => {
         tech_lighting: tech?.lighting ?? body.techLighting ?? body.tech_lighting ?? null,
         tech_color: tech?.color ?? body.techColor ?? body.tech_color ?? null,
         link: body.link ?? null,
-        description: body.description ?? null,
         updated_at: new Date().toISOString()
       };
 
