@@ -17,7 +17,9 @@ export default function About() {
         const res = await fetch("api/content?key=about");
         if (res.ok) {
           const json = await res.json();
-          if (json) setData(json);
+          if (json) setData(prev => ({ ...prev, ...json }));
+        } else {
+          console.error("About content fetch failed:", res.statusText);
         }
       } catch (error) {
         console.error("Failed to fetch about data:", error);

@@ -5,10 +5,28 @@ import { ProjectData } from "../types";
 
 export default function ProjectList() {
   const [projects, setProjects] = useState<ProjectData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("api/projects").then(res => res.json()).then(setProjects);
+    const fetchProjects = async () => {
+      try {
+        const res = await fetch("api/projects");
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json)) setProjects(json);
+        } else {
+          console.error("Projects fetch failed:", res.statusText);
+        }
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProjects();
   }, []);
+
+  if (loading) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">

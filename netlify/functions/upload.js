@@ -1,16 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 export const handler = async (event) => {
   const { httpMethod, headers, body } = event;
-  const adminToken = headers['x-admin-token'];
-  const isValidAdmin = adminToken === process.env.ADMIN_TOKEN;
 
   try {
+    // 1. Check environment variables
+    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_TOKEN } = process.env;
+    if (!SUPABASE_URL) {
+      console.error('Missing SUPABASE_URL');
+      return { statusCode: 500, body: JSON.stringify({ error: 'Missing SUPABASE_URL' }) };
+    }
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing SUPABASE_SERVICE_ROLE_KEY');
+      return { statusCode: 500, body: JSON.stringify({ error: 'Missing SUPABASE_SERVICE_ROLE_KEY' }) };
+    }
+    if (!ADMIN_TOKEN) {
+      console.error('Missing ADMIN_TOKEN');
+      return { statusCode: 500, body: JSON.stringify({ error: 'Missing ADMIN_TOKEN' }) };
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const adminToken = headers['x-admin-token'];
+    const isValidAdmin = adminToken === ADMIN_TOKEN;
     if (httpMethod !== 'POST') {
       return { statusCode: 405, body: 'Method Not Allowed' };
     }

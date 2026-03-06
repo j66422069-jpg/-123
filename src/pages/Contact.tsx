@@ -4,20 +4,43 @@ import { Mail, Instagram, Phone, Download, Copy, Check, ExternalLink } from "luc
 import { ContactData } from "../types";
 
 export default function Contact() {
-  const [data, setData] = useState<ContactData | null>(null);
+  const [data, setData] = useState<ContactData>({
+    email: "email@example.com",
+    instagramUrl: "https://instagram.com",
+    instagramText: "@cinematographer",
+    phone: "010-0000-0000",
+    resumeUrl: ""
+  });
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("api/content?key=contact").then(res => res.json()).then(setData);
+    const fetchContact = async () => {
+      try {
+        const res = await fetch("api/content?key=contact");
+        if (res.ok) {
+          const json = await res.json();
+          if (json) setData(prev => ({ ...prev, ...json }));
+        } else {
+          console.error("Contact fetch failed:", res.statusText);
+        }
+      } catch (error) {
+        console.error("Failed to fetch contact:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContact();
   }, []);
 
   const handleCopy = (text: string, type: string) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
   };
 
-  if (!data) return null;
+  if (loading) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">

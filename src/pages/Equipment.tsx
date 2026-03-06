@@ -5,9 +5,25 @@ import { Camera, Layers, Sun, Palette } from "lucide-react";
 
 export default function Equipment() {
   const [items, setItems] = useState<EquipmentItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("api/equipment").then(res => res.json()).then(setItems);
+    const fetchEquipment = async () => {
+      try {
+        const res = await fetch("api/equipment");
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json)) setItems(json);
+        } else {
+          console.error("Equipment fetch failed:", res.statusText);
+        }
+      } catch (error) {
+        console.error("Failed to fetch equipment:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEquipment();
   }, []);
 
   const categories = ["Camera", "Lens", "Lighting", "Color"] as const;
@@ -21,6 +37,8 @@ export default function Equipment() {
       default: return null;
     }
   };
+
+  if (loading) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">

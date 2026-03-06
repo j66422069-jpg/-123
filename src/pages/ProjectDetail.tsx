@@ -91,7 +91,7 @@ export default function ProjectDetail() {
 
         {/* Video Section */}
         <div className="space-y-20 mb-24">
-          {project.videos.map((video, idx) => (
+          {(Array.isArray(project.videos) ? project.videos : []).map((video, idx) => (
             <div key={idx} className="space-y-6">
               <div className="aspect-video bg-black overflow-hidden shadow-2xl">
                 <iframe

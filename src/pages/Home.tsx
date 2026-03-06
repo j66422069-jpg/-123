@@ -5,18 +5,48 @@ import { motion } from "motion/react";
 import { HomeData, ProjectData } from "../types";
 
 export default function Home() {
-  const [data, setData] = useState<HomeData | null>(null);
+  const [data, setData] = useState<HomeData>({
+    name: "Director Name",
+    role: "Cinematographer / Director",
+    tagline: "Capturing moments that tell a story.",
+    resumeUrl: "",
+    featuredProjectIds: []
+  });
   const [projects, setProjects] = useState<ProjectData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("api/content?key=home").then(res => res.json()).then(setData);
-    fetch("api/projects").then(res => res.json()).then(setProjects);
+    const fetchData = async () => {
+      try {
+        const [contentRes, projectsRes] = await Promise.all([
+          fetch("api/content?key=home"),
+          fetch("api/projects")
+        ]);
+
+        if (contentRes.ok) {
+          const contentJson = await contentRes.json();
+          if (contentJson) setData(prev => ({ ...prev, ...contentJson }));
+        } else {
+          console.error("Home content fetch failed:", contentRes.statusText);
+        }
+
+        if (projectsRes.ok) {
+          const projectsJson = await projectsRes.json();
+          if (Array.isArray(projectsJson)) setProjects(projectsJson);
+        } else {
+          console.error("Projects fetch failed:", projectsRes.statusText);
+        }
+      } catch (error) {
+        console.error("Failed to fetch home data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  if (!data) return null;
-
-  const featuredProjects = projects.filter(p => Boolean(p.featured));
-  const displayProjects = featuredProjects.length > 0 ? featuredProjects : projects;
+  const featuredProjects = (Array.isArray(projects) ? projects : []).filter(p => Boolean(p.featured));
+  const displayProjects = featuredProjects.length > 0 ? featuredProjects : (Array.isArray(projects) ? projects : []);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">

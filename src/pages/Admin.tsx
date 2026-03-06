@@ -44,22 +44,32 @@ export default function Admin() {
           if (homeRes.ok) {
             const json = await homeRes.json();
             if (json) setHome(prev => ({ ...prev, ...json }));
+          } else {
+            console.error("Home content fetch failed:", homeRes.statusText);
           }
           if (aboutRes.ok) {
             const json = await aboutRes.json();
             if (json) setAbout(prev => ({ ...prev, ...json }));
+          } else {
+            console.error("About content fetch failed:", aboutRes.statusText);
           }
           if (projectsRes.ok) {
             const json = await projectsRes.json();
             if (Array.isArray(json)) setProjects(json);
+          } else {
+            console.error("Projects fetch failed:", projectsRes.statusText);
           }
           if (equipmentRes.ok) {
             const json = await equipmentRes.json();
             if (Array.isArray(json)) setEquipment(json);
+          } else {
+            console.error("Equipment fetch failed:", equipmentRes.statusText);
           }
           if (contactRes.ok) {
             const json = await contactRes.json();
             if (json) setContact(prev => ({ ...prev, ...json }));
+          } else {
+            console.error("Contact content fetch failed:", contactRes.statusText);
           }
         } catch (error) {
           console.error("Failed to fetch admin data:", error);
