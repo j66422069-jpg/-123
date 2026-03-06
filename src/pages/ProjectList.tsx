@@ -1,32 +1,16 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { ProjectData } from "../types";
+import { useContent } from "../context/ContentContext";
 
 export default function ProjectList() {
-  const [projects, setProjects] = useState<ProjectData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { projects, fetchProjects, projectsLoaded } = useContent();
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const res = await fetch("api/projects");
-        if (res.ok) {
-          const json = await res.json();
-          if (Array.isArray(json)) setProjects(json);
-        } else {
-          console.error("Projects fetch failed:", res.statusText);
-        }
-      } catch (error) {
-        console.error("Failed to fetch projects:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProjects();
-  }, []);
+  }, [fetchProjects]);
 
-  if (loading) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
+  if (!projectsLoaded && projects.length === 0) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">

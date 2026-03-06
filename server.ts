@@ -150,13 +150,16 @@ async function startServer() {
   app.post("/api/content", (req, res) => {
     try {
       const body = req.body;
-      if (body.key && body.value !== undefined) {
-        setSetting(body.key, body.value);
-      } else {
-        for (const [key, value] of Object.entries(body)) {
-          setSetting(key, value);
+      const transaction = db.transaction((data) => {
+        if (data.key && data.value !== undefined) {
+          setSetting(data.key, data.value);
+        } else {
+          for (const [key, value] of Object.entries(data)) {
+            setSetting(key, value);
+          }
         }
-      }
+      });
+      transaction(body);
       res.json({ success: true });
     } catch (error) {
       console.error("Error saving content:", error);

@@ -5,10 +5,11 @@ import { HomeData, AboutData, ProjectData, EquipmentItem, ContactData, VideoData
 import { useContent } from "../context/ContentContext";
 
 export default function Admin() {
-  const { fetchContent } = useContent();
+  const { fetchContent, fetchProjects, fetchEquipment, updateContent, updateProjects, updateEquipment } = useContent();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState("home");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Data States
   const [home, setHome] = useState<HomeData>({
@@ -126,135 +127,207 @@ export default function Admin() {
   };
 
   const saveHome = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
+      const payload = {
+        home_name: home.name,
+        home_role: home.role,
+        home_tagline: home.tagline,
+        home_resumeUrl: home.resumeUrl,
+        home_featuredProjectIds: home.featuredProjectIds
+      };
       const res = await fetch("api/content", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          home_name: home.name,
-          home_role: home.role,
-          home_tagline: home.tagline,
-          home_resumeUrl: home.resumeUrl,
-          home_featuredProjectIds: home.featuredProjectIds
-        }),
+        body: JSON.stringify(payload),
       });
       if (await handleAuthError(res)) return;
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "저장에 실패했습니다.");
       }
-      await fetchContent(true);
+      updateContent(payload);
       alert("저장되었습니다.");
     } catch (error: any) {
       console.error("Save Home error:", error);
       alert(`저장 실패: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const saveAbout = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
+      const payload = {
+        about_profileImageUrl: about.profileImageUrl,
+        about_introText: about.introText,
+        about_services: about.about_services,
+        about_experience: about.about_experience
+      };
       const res = await fetch("api/content", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          about_profileImageUrl: about.profileImageUrl,
-          about_introText: about.introText,
-          about_services: about.about_services,
-          about_experience: about.about_experience
-        }),
+        body: JSON.stringify(payload),
       });
       if (await handleAuthError(res)) return;
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "저장에 실패했습니다.");
       }
-      await fetchContent(true);
+      updateContent(payload);
       alert("저장되었습니다.");
     } catch (error: any) {
       console.error("Save About error:", error);
       alert(`저장 실패: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const saveContact = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
+      const payload = {
+        contact_email: contact.email,
+        contact_instagramUrl: contact.instagramUrl,
+        contact_instagramText: contact.instagramText,
+        contact_phone: contact.phone,
+        contact_resumeUrl: contact.resumeUrl
+      };
       const res = await fetch("api/content", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          contact_email: contact.email,
-          contact_instagramUrl: contact.instagramUrl,
-          contact_instagramText: contact.instagramText,
-          contact_phone: contact.phone,
-          contact_resumeUrl: contact.resumeUrl
-        }),
+        body: JSON.stringify(payload),
       });
       if (await handleAuthError(res)) return;
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "저장에 실패했습니다.");
       }
-      await fetchContent(true);
+      updateContent(payload);
       alert("저장되었습니다.");
     } catch (error: any) {
       console.error("Save Contact error:", error);
       alert(`저장 실패: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const saveProject = async () => {
-    if (!editingProject) return;
+    if (!editingProject || isSaving) return;
+    setIsSaving(true);
     const method = editingProject.id ? "PUT" : "POST";
     const url = editingProject.id ? `api/projects?id=${editingProject.id}` : "api/projects";
     
-    const res = await fetch(url, {
-      method,
-      headers: getAuthHeaders(),
-      body: JSON.stringify(editingProject),
-    });
-    
-    if (await handleAuthError(res)) return;
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(editingProject),
+      });
+      
+      if (await handleAuthError(res)) return;
 
-    if (!res.ok) {
-      const errorData = await res.json();
-      alert(`저장 실패: ${errorData.error || "알 수 없는 오류"}\n${errorData.details || ""}`);
-      return;
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(`저장 실패: ${errorData.error || "알 수 없는 오류"}\n${errorData.details || ""}`);
+        return;
+      }
+
+      const savedProject = await res.json();
+      const projectId = editingProject.id || savedProject.id;
+      
+      // Update local projects list immediately
+      const updatedProject = { ...editingProject, id: projectId } as ProjectData;
+      const newProjects = editingProject.id 
+        ? projects.map(p => p.id === projectId ? updatedProject : p)
+        : [updatedProject, ...projects];
+      
+      setProjects(newProjects);
+      updateProjects(newProjects);
+      setEditingProject(null);
+      alert("저장되었습니다.");
+    } catch (error) {
+      console.error("Save Project error:", error);
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
     }
-
-    setEditingProject(null);
-    fetch("api/projects").then(res => res.json()).then(setProjects);
-    alert("저장되었습니다.");
   };
 
   const deleteProject = async (id: number) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    const res = await fetch(`api/projects?id=${id}`, { 
-      method: "DELETE",
-      headers: getAuthHeaders(null)
-    });
-    if (await handleAuthError(res)) return;
-    fetch("api/projects").then(res => res.json()).then(setProjects);
+    if (!confirm("정말 삭제하시겠습니까?") || isSaving) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`api/projects?id=${id}`, { 
+        method: "DELETE",
+        headers: getAuthHeaders(null)
+      });
+      if (await handleAuthError(res)) return;
+      
+      const newProjects = projects.filter(p => p.id !== id);
+      setProjects(newProjects);
+      updateProjects(newProjects);
+    } catch (error) {
+      console.error("Delete Project error:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const saveEquipment = async (item: EquipmentItem) => {
+    if (isSaving) return;
+    setIsSaving(true);
     const method = item.id ? "PUT" : "POST";
     const url = item.id ? `api/equipment?id=${item.id}` : "api/equipment";
-    const res = await fetch(url, {
-      method,
-      headers: getAuthHeaders(),
-      body: JSON.stringify(item),
-    });
-    if (await handleAuthError(res)) return;
-    fetch("api/equipment").then(res => res.json()).then(setEquipment);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(item),
+      });
+      if (await handleAuthError(res)) return;
+      
+      const savedData = await res.json();
+      const itemId = item.id || savedData.id;
+      const updatedItem = { ...item, id: itemId };
+      
+      const newEquipment = item.id 
+        ? equipment.map(e => e.id === itemId ? updatedItem : e)
+        : [...equipment, updatedItem];
+      
+      setEquipment(newEquipment);
+      updateEquipment(newEquipment);
+    } catch (error) {
+      console.error("Save Equipment error:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const deleteEquipment = async (id: number) => {
-    const res = await fetch(`api/equipment?id=${id}`, { 
-      method: "DELETE",
-      headers: getAuthHeaders(null)
-    });
-    if (await handleAuthError(res)) return;
-    fetch("api/equipment").then(res => res.json()).then(setEquipment);
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`api/equipment?id=${id}`, { 
+        method: "DELETE",
+        headers: getAuthHeaders(null)
+      });
+      if (await handleAuthError(res)) return;
+      
+      const newEquipment = equipment.filter(e => e.id !== id);
+      setEquipment(newEquipment);
+      updateEquipment(newEquipment);
+    } catch (error) {
+      console.error("Delete Equipment error:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,8 +449,12 @@ export default function Admin() {
                   />
                 </div>
               </div>
-              <button onClick={saveHome} className="px-8 py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2">
-                <Save size={16} /> SAVE CHANGES
+              <button 
+                onClick={saveHome} 
+                disabled={isSaving}
+                className={`px-8 py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2 transition-opacity ${isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-black/90"}`}
+              >
+                <Save size={16} /> {isSaving ? "SAVING..." : "SAVE CHANGES"}
               </button>
             </div>
           )}
@@ -423,8 +500,12 @@ export default function Admin() {
                   />
                 </div>
               </div>
-              <button onClick={saveAbout} className="px-8 py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2">
-                <Save size={16} /> SAVE CHANGES
+              <button 
+                onClick={saveAbout} 
+                disabled={isSaving}
+                className={`px-8 py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2 transition-opacity ${isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-black/90"}`}
+              >
+                <Save size={16} /> {isSaving ? "SAVING..." : "SAVE CHANGES"}
               </button>
             </div>
           )}
@@ -630,8 +711,12 @@ export default function Admin() {
                     </div>
                   </div>
 
-                  <button onClick={saveProject} className="w-full py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-2">
-                    <Save size={16} /> SAVE PROJECT
+                  <button 
+                    onClick={saveProject} 
+                    disabled={isSaving}
+                    className={`w-full py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-2 transition-opacity ${isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-black/90"}`}
+                  >
+                    <Save size={16} /> {isSaving ? "SAVING..." : "SAVE PROJECT"}
                   </button>
                 </div>
               ) : (
@@ -712,9 +797,10 @@ export default function Admin() {
                                     await saveEquipment({ ...item, ...equipmentForm });
                                     setEditingEquipmentId(null);
                                   }}
-                                  className="px-4 py-2 bg-black text-white text-[10px] font-bold tracking-widest uppercase"
+                                  disabled={isSaving}
+                                  className={`px-4 py-2 bg-black text-white text-[10px] font-bold tracking-widest uppercase transition-opacity ${isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-black/90"}`}
                                 >
-                                  SAVE
+                                  {isSaving ? "SAVING..." : "SAVE"}
                                 </button>
                                 <button
                                   onClick={() => setEditingEquipmentId(null)}
@@ -772,9 +858,10 @@ export default function Admin() {
                                 await saveEquipment({ category: cat as any, ...equipmentForm });
                                 setEditingEquipmentId(null);
                               }}
-                              className="px-4 py-2 bg-black text-white text-[10px] font-bold tracking-widest uppercase"
+                              disabled={isSaving}
+                              className={`px-4 py-2 bg-black text-white text-[10px] font-bold tracking-widest uppercase transition-opacity ${isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-black/90"}`}
                             >
-                              SAVE
+                              {isSaving ? "SAVING..." : "SAVE"}
                             </button>
                             <button
                               onClick={() => setEditingEquipmentId(null)}
@@ -842,8 +929,12 @@ export default function Admin() {
                   />
                 </div>
               </div>
-              <button onClick={saveContact} className="px-8 py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2">
-                <Save size={16} /> SAVE CHANGES
+              <button 
+                onClick={saveContact} 
+                disabled={isSaving}
+                className={`px-8 py-4 bg-black text-white text-xs font-bold tracking-widest uppercase flex items-center gap-2 transition-opacity ${isSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-black/90"}`}
+              >
+                <Save size={16} /> {isSaving ? "SAVING..." : "SAVE CHANGES"}
               </button>
             </div>
           )}

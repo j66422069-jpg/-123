@@ -1,30 +1,14 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { motion } from "motion/react";
-import { EquipmentItem } from "../types";
 import { Camera, Layers, Sun, Palette } from "lucide-react";
+import { useContent } from "../context/ContentContext";
 
 export default function Equipment() {
-  const [items, setItems] = useState<EquipmentItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { equipment: items, fetchEquipment, equipmentLoaded } = useContent();
 
   useEffect(() => {
-    const fetchEquipment = async () => {
-      try {
-        const res = await fetch("api/equipment");
-        if (res.ok) {
-          const json = await res.json();
-          if (Array.isArray(json)) setItems(json);
-        } else {
-          console.error("Equipment fetch failed:", res.statusText);
-        }
-      } catch (error) {
-        console.error("Failed to fetch equipment:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchEquipment();
-  }, []);
+  }, [fetchEquipment]);
 
   const categories = ["Camera", "Lens", "Lighting", "Color"] as const;
 
@@ -38,7 +22,7 @@ export default function Equipment() {
     }
   };
 
-  if (loading) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
+  if (!equipmentLoaded && items.length === 0) return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">

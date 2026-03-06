@@ -2,32 +2,33 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { ChevronLeft, Camera, Layers, Sun, Palette } from "lucide-react";
-import { ProjectData } from "../types";
+import { useContent } from "../context/ContentContext";
 
 export default function ProjectDetail() {
   const { id } = useParams();
-  const [project, setProject] = useState<ProjectData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { projectDetails, fetchProjectDetail } = useContent();
+  const [loading, setLoading] = useState(!projectDetails[id || ""]);
   const [error, setError] = useState<string | null>(null);
 
+  const project = id ? projectDetails[id] : null;
+
   useEffect(() => {
-    setLoading(true);
-    fetch(`api/projects?id=${id}`)
-      .then(res => {
-        if (!res.ok) throw new Error("프로젝트를 찾을 수 없습니다.");
-        return res.json();
-      })
-      .then(data => {
-        setProject(data);
-        setError(null);
-      })
-      .catch(err => {
-        setError(err.message);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [id]);
+    if (!id) return;
+    if (!projectDetails[id]) {
+      setLoading(true);
+      fetchProjectDetail(id)
+        .then(data => {
+          if (!data) setError("프로젝트를 찾을 수 없습니다.");
+          setLoading(false);
+        })
+        .catch(err => {
+          setError(err.message);
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [id, projectDetails, fetchProjectDetail]);
 
   if (loading) {
     return (
