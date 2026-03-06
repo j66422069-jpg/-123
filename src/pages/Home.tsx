@@ -53,7 +53,7 @@ export default function Home() {
           <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8">
             {data.name}
           </h1>
-          <p className="text-xl md:text-2xl text-black/60 max-w-2xl leading-relaxed mb-12">
+          <p className="text-xl md:text-2xl text-black/60 max-w-2xl leading-relaxed mb-12 whitespace-pre-line">
             {data.tagline}
           </p>
           
