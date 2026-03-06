@@ -63,24 +63,47 @@ export const handler = async (event) => {
     const payload = JSON.parse(body || '{}');
 
     if (httpMethod === 'POST') {
-      const { videos, tech, ...projectData } = payload;
+      const { videos, tech, ...body } = payload;
+      const row = {
+        title: body.title ?? "",
+        year: body.year ?? null,
+        featured: body.featured ?? false,
+        role: body.role ?? null,
+        summary: body.summary ?? null,
+        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        tech_camera: tech?.camera ?? body.techCamera ?? body.tech_camera ?? null,
+        tech_lens: tech?.lens ?? body.techLens ?? body.tech_lens ?? null,
+        tech_lighting: tech?.lighting ?? body.techLighting ?? body.tech_lighting ?? null,
+        tech_color: tech?.color ?? body.techColor ?? body.tech_color ?? null,
+        link: body.link ?? null,
+        description: body.description ?? null,
+        created_at: body.createdAt ?? body.created_at ?? undefined,
+        updated_at: body.updatedAt ?? body.updated_at ?? undefined
+      };
+
       const { data: project, error: pError } = await supabase
         .from('projects')
-        .insert([{
-          ...projectData,
-          tech_camera: tech?.camera,
-          tech_lens: tech?.lens,
-          tech_lighting: tech?.lighting,
-          tech_color: tech?.color
-        }])
+        .insert([row])
         .select()
         .single();
-      if (pError) throw pError;
+
+      if (pError) {
+        console.error('Insert project error:', pError);
+        throw pError;
+      }
 
       if (videos && Array.isArray(videos)) {
-        const videoRows = videos.map(v => ({ ...v, project_id: project.id }));
+        const videoRows = videos.map(v => ({
+          project_id: project.id,
+          title: v.title ?? null,
+          video_url: v.videoUrl ?? v.video_url ?? null,
+          thumbnail_url: v.thumbnailUrl ?? v.thumbnail_url ?? null
+        }));
         const { error: vError } = await supabase.from('project_videos').insert(videoRows);
-        if (vError) throw vError;
+        if (vError) {
+          console.error('Insert project videos error:', vError);
+          throw vError;
+        }
       }
 
       return { statusCode: 200, body: JSON.stringify(project) };
@@ -90,25 +113,48 @@ export const handler = async (event) => {
       const { id } = queryStringParameters || {};
       if (!id) throw new Error('ID is required');
 
-      const { videos, tech, ...projectData } = payload;
+      const { videos, tech, ...body } = payload;
+      const row = {
+        title: body.title ?? "",
+        year: body.year ?? null,
+        featured: body.featured ?? false,
+        role: body.role ?? null,
+        summary: body.summary ?? null,
+        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        tech_camera: tech?.camera ?? body.techCamera ?? body.tech_camera ?? null,
+        tech_lens: tech?.lens ?? body.techLens ?? body.tech_lens ?? null,
+        tech_lighting: tech?.lighting ?? body.techLighting ?? body.tech_lighting ?? null,
+        tech_color: tech?.color ?? body.techColor ?? body.tech_color ?? null,
+        link: body.link ?? null,
+        description: body.description ?? null,
+        created_at: body.createdAt ?? body.created_at ?? undefined,
+        updated_at: body.updatedAt ?? body.updated_at ?? undefined
+      };
+
       const { error: pError } = await supabase
         .from('projects')
-        .update({
-          ...projectData,
-          tech_camera: tech?.camera,
-          tech_lens: tech?.lens,
-          tech_lighting: tech?.lighting,
-          tech_color: tech?.color
-        })
+        .update(row)
         .eq('id', id);
-      if (pError) throw pError;
+
+      if (pError) {
+        console.error('Update project error:', pError);
+        throw pError;
+      }
 
       // Update videos: delete and re-insert
       await supabase.from('project_videos').delete().eq('project_id', id);
       if (videos && Array.isArray(videos)) {
-        const videoRows = videos.map(v => ({ ...v, project_id: id }));
+        const videoRows = videos.map(v => ({
+          project_id: id,
+          title: v.title ?? null,
+          video_url: v.videoUrl ?? v.video_url ?? null,
+          thumbnail_url: v.thumbnailUrl ?? v.thumbnail_url ?? null
+        }));
         const { error: vError } = await supabase.from('project_videos').insert(videoRows);
-        if (vError) throw vError;
+        if (vError) {
+          console.error('Update project videos error:', vError);
+          throw vError;
+        }
       }
 
       return { statusCode: 200, body: JSON.stringify({ success: true }) };
