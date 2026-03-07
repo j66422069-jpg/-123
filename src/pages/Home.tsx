@@ -6,40 +6,28 @@ import { HomeData, ProjectData } from "../types";
 import { useContent } from "../context/ContentContext";
 
 export default function Home() {
-  const { content, loading: contentLoading } = useContent();
-  const [projects, setProjects] = useState<ProjectData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { content, projects, loading: contentLoading, projectsLoaded } = useContent();
 
   const data: HomeData = {
-    name: content?.home_name || (contentLoading ? "" : "Director Name"),
-    role: content?.home_role || (contentLoading ? "" : "Cinematographer / Director"),
-    tagline: content?.home_tagline || (contentLoading ? "" : "Capturing moments that tell a story."),
+    name: content?.home_name || "",
+    role: content?.home_role || "",
+    tagline: content?.home_tagline || "",
     resumeUrl: content?.home_resumeUrl || "",
     featuredProjectIds: Array.isArray(content?.home_featuredProjectIds) ? content.home_featuredProjectIds : []
   };
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const projectsRes = await fetch("api/projects");
-        if (projectsRes.ok) {
-          const projectsJson = await projectsRes.json();
-          if (Array.isArray(projectsJson)) setProjects(projectsJson);
-        }
-      } catch (error) {
-        console.error("Failed to fetch projects:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProjects();
-  }, []);
-
-  const featuredProjects = (Array.isArray(projects) ? projects : []).filter(p => Boolean(p.featured));
+  const featuredProjects = (Array.isArray(projects) ? projects : [])
+    .filter(p => Boolean(p.featured) && (p.home_order || 0) > 0)
+    .sort((a, b) => (a.home_order || 0) - (b.home_order || 0));
+  
   const displayProjects = featuredProjects.length > 0 ? featuredProjects : (Array.isArray(projects) ? projects : []);
 
+  if (contentLoading && !content) {
+    return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-6 py-20">
+    <div className="max-w-7xl mx-auto px-6 py-20 overflow-hidden">
       {/* Hero Section */}
       <section className="mb-32">
         <motion.div
@@ -48,13 +36,13 @@ export default function Home() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-xs font-bold tracking-[0.3em] text-black/40 uppercase mb-4">
-            {data.role}
+            {data.role || "Cinematographer / Director"}
           </h2>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8">
-            {data.name}
+            {data.name || "Director Name"}
           </h1>
           <p className="text-xl md:text-2xl text-black/60 max-w-2xl leading-relaxed mb-12 whitespace-pre-line">
-            {data.tagline}
+            {data.tagline || "Capturing moments that tell a story."}
           </p>
           
           <div className="flex flex-wrap gap-4">
@@ -76,7 +64,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Featured Projects Grid */}
+      {/* Featured Projects */}
       <section>
         <div className="flex items-end justify-between mb-12">
           <div>
@@ -95,11 +83,12 @@ export default function Home() {
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
             >
               <Link to={`/projects/${project.id}`} className="group block">
-                <div className="aspect-[16/9] overflow-hidden bg-black/5 mb-4">
+                <div className="aspect-[16/9] overflow-hidden bg-black/5 mb-6">
                   <img
                     src={project.thumbnailUrl || "https://picsum.photos/seed/project/800/450"}
                     alt={project.title}
@@ -109,16 +98,16 @@ export default function Home() {
                 </div>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-lg font-bold tracking-tight group-hover:text-black/60 transition-colors">
+                    <h4 className="text-lg font-bold tracking-tight mb-1 group-hover:text-black/60 transition-colors">
                       {project.title}
                     </h4>
-                    <p className="text-xs text-black/40 font-medium tracking-widest uppercase mt-1">
+                    <p className="text-sm text-black/40 font-medium tracking-widest uppercase">
                       {project.year} — {project.type}
                     </p>
                   </div>
-                  <span className="text-[10px] font-bold tracking-widest text-black/20 group-hover:text-black transition-colors">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
+                  <div className="w-10 h-10 border border-black/10 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all duration-300">
+                    <ChevronRight size={20} />
+                  </div>
                 </div>
               </Link>
             </motion.div>

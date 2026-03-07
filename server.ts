@@ -26,6 +26,7 @@ db.exec(`
     summary TEXT,
     featured INTEGER DEFAULT 0,
     sort_order INTEGER DEFAULT 0,
+    home_order INTEGER DEFAULT 0,
     thumbnail_url TEXT,
     tech_camera TEXT,
     tech_lens TEXT,
@@ -83,6 +84,9 @@ try {
   }
   if (!projectCols.some(c => c.name === "sort_order")) {
     db.exec("ALTER TABLE projects ADD COLUMN sort_order INTEGER DEFAULT 0");
+  }
+  if (!projectCols.some(c => c.name === "home_order")) {
+    db.exec("ALTER TABLE projects ADD COLUMN home_order INTEGER DEFAULT 0");
   }
 } catch (e) {
   console.error("Migration failed:", e);
@@ -227,7 +231,8 @@ async function startServer() {
       }
       return;
     }
-    const projects = db.prepare("SELECT * FROM projects ORDER BY sort_order ASC, year DESC").all() as any[];
+    // Ensure consistent sorting: sort_order ASC, then created_at DESC
+    const projects = db.prepare("SELECT * FROM projects ORDER BY sort_order ASC, created_at DESC").all() as any[];
     const transformed = projects.map(p => ({
       ...p,
       thumbnailUrl: p.thumbnail_url,
@@ -264,6 +269,12 @@ async function startServer() {
   app.post("/api/projects", (req, res) => {
     try {
       const body = req.body;
+      
+      // Prevent empty project creation
+      if (!body.title || body.title.trim() === "") {
+        return res.status(400).json({ error: "Project title is required" });
+      }
+
       const row = {
         title: body.title ?? "",
         year: body.year ?? null,
@@ -279,6 +290,7 @@ async function startServer() {
         link: body.link ?? null,
         description: body.description ?? null,
         sort_order: body.sort_order ?? 0,
+        home_order: body.home_order ?? 0,
         updated_at: new Date().toISOString()
       };
 
@@ -286,13 +298,13 @@ async function startServer() {
         INSERT INTO projects (
           title, year, type, role, summary, featured, thumbnail_url, 
           tech_camera, tech_lens, tech_lighting, tech_color, 
-          link, description, sort_order, updated_at
+          link, description, sort_order, home_order, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
         row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
-        row.link, row.description, row.sort_order, row.updated_at
+        row.link, row.description, row.sort_order, row.home_order, row.updated_at
       );
       
       const projectId = info.lastInsertRowid;
@@ -330,6 +342,7 @@ async function startServer() {
         link: body.link ?? null,
         description: body.description ?? null,
         sort_order: body.sort_order !== undefined ? body.sort_order : 0,
+        home_order: body.home_order !== undefined ? body.home_order : 0,
         updated_at: new Date().toISOString()
       };
 
@@ -337,12 +350,12 @@ async function startServer() {
         UPDATE projects SET 
           title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
           tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
-          link = ?, description = ?, sort_order = ?, updated_at = ?
+          link = ?, description = ?, sort_order = ?, home_order = ?, updated_at = ?
         WHERE id = ?
       `).run(
         row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
         row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
-        row.link, row.description, row.sort_order, row.updated_at,
+        row.link, row.description, row.sort_order, row.home_order, row.updated_at,
         id
       );
 
@@ -393,6 +406,7 @@ async function startServer() {
         link: body.link ?? null,
         description: body.description ?? null,
         sort_order: body.sort_order !== undefined ? body.sort_order : 0,
+        home_order: body.home_order !== undefined ? body.home_order : 0,
         updated_at: new Date().toISOString()
       };
 
@@ -400,12 +414,12 @@ async function startServer() {
         UPDATE projects SET 
           title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
           tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
-          link = ?, description = ?, sort_order = ?, updated_at = ?
+          link = ?, description = ?, sort_order = ?, home_order = ?, updated_at = ?
         WHERE id = ?
       `).run(
         row.title, row.year, row.type, row.role, row.summary, row.featured, row.thumbnail_url,
         row.tech_camera, row.tech_lens, row.tech_lighting, row.tech_color,
-        row.link, row.description, row.sort_order, row.updated_at,
+        row.link, row.description, row.sort_order, row.home_order, row.updated_at,
         id
       );
 

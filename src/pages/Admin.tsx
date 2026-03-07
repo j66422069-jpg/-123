@@ -23,6 +23,8 @@ export default function Admin() {
   const [contact, setContact] = useState<ContactData>({
     email: "", instagramUrl: "", instagramText: "", phone: "", resumeUrl: ""
   });
+  const [equipmentDescription, setEquipmentDescription] = useState("");
+  const [contactDescription, setContactDescription] = useState("");
   const [hasOrderChanged, setHasOrderChanged] = useState(false);
 
   useEffect(() => {
@@ -71,6 +73,9 @@ export default function Admin() {
               phone: allContent.contact_phone || "",
               resumeUrl: allContent.contact_resumeUrl || ""
             });
+
+            setEquipmentDescription(allContent.equipment_description || "");
+            setContactDescription(allContent.contact_description || "");
           }
 
           if (projectsRes.ok) {
@@ -221,6 +226,13 @@ export default function Admin() {
 
   const saveProject = async () => {
     if (!editingProject || isSaving) return;
+    
+    // Prevent saving project without title
+    if (!editingProject.title || editingProject.title.trim() === "") {
+      alert("프로젝트 제목을 입력해주세요.");
+      return;
+    }
+
     setIsSaving(true);
     const method = editingProject.id ? "PUT" : "POST";
     const url = editingProject.id ? `api/projects?id=${editingProject.id}` : "api/projects";
@@ -252,14 +264,14 @@ export default function Admin() {
       const savedProject = await res.json();
       const projectId = editingProject.id || savedProject.id;
       
-      // Update local projects list immediately
-      const updatedProject = { ...editingProject, id: projectId } as ProjectData;
-      const newProjects = editingProject.id 
-        ? projects.map(p => p.id === projectId ? updatedProject : p)
-        : [updatedProject, ...projects];
+      // Fetch full project list to ensure correct order and data
+      const projectsRes = await fetch("api/projects");
+      if (projectsRes.ok) {
+        const updatedProjects = await projectsRes.json();
+        setProjects(updatedProjects);
+        updateProjects(updatedProjects);
+      }
       
-      setProjects(newProjects);
-      updateProjects(newProjects);
       setEditingProject(null);
       setHasOrderChanged(false);
       alert("저장되었습니다.");
@@ -288,7 +300,10 @@ export default function Admin() {
     setIsSaving(true);
     
     try {
-      const orders = projects.map((p, index) => ({
+      // Filter out invalid projects (no ID or no title)
+      const validProjects = projects.filter(p => p.id && p.title && p.title.trim() !== "");
+      
+      const orders = validProjects.map((p, index) => ({
         id: p.id,
         sort_order: index
       }));
@@ -306,7 +321,14 @@ export default function Admin() {
         throw new Error(errorData.error || "순서 저장에 실패했습니다.");
       }
       
-      updateProjects(projects);
+      // Re-fetch projects to ensure everything is in sync
+      const projectsRes = await fetch("api/projects");
+      if (projectsRes.ok) {
+        const updatedProjects = await projectsRes.json();
+        setProjects(updatedProjects);
+        updateProjects(updatedProjects);
+      }
+      
       setHasOrderChanged(false);
       alert("순서가 저장되었습니다.");
     } catch (error: any) {
@@ -583,7 +605,7 @@ export default function Admin() {
                   )}
                   <button
                     onClick={() => setEditingProject({
-                      title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, thumbnailUrl: "",
+                      title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, home_order: 0, thumbnailUrl: "",
                       tech: { camera: "", lens: "", lighting: "", color: "" },
                       videos: []
                     })}
@@ -670,14 +692,50 @@ export default function Admin() {
                         </label>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="featured"
-                        checked={editingProject.featured}
-                        onChange={(e) => setEditingProject({ ...editingProject, featured: e.target.checked })}
-                      />
-                      <label htmlFor="featured" className="text-xs font-bold tracking-widest uppercase">주요 작업으로 표시 (HOME)</label>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="featured"
+                          checked={editingProject.featured}
+                          onChange={(e) => {
+                            const isFeatured = e.target.checked;
+                            setEditingProject({ 
+                              ...editingProject, 
+                              featured: isFeatured,
+                              home_order: isFeatured ? (editingProject.home_order || 0) : 0
+                            });
+                          }}
+                        />
+                        <label htmlFor="featured" className="text-xs font-bold tracking-widest uppercase">주요 작업으로 표시 (HOME)</label>
+                      </div>
+                      
+                      {editingProject.featured && (
+                        <div className="flex items-center gap-4">
+                          <label className="text-[10px] font-bold tracking-widest uppercase text-black/40">주요 작업 순서</label>
+                          <select
+                            value={editingProject.home_order || 0}
+                            onChange={(e) => {
+                              const newOrder = parseInt(e.target.value);
+                              // Check if this order is already taken by another project
+                              const existing = projects.find(p => p.home_order === newOrder && p.id !== editingProject.id);
+                              if (existing && newOrder !== 0) {
+                                if (confirm(`이미 '${existing.title}' 프로젝트가 ${newOrder}번 순서를 사용 중입니다. 이 프로젝트로 변경하시겠습니까?`)) {
+                                  setEditingProject({ ...editingProject, home_order: newOrder });
+                                }
+                              } else {
+                                setEditingProject({ ...editingProject, home_order: newOrder });
+                              }
+                            }}
+                            className="px-3 py-1 border border-black/10 text-xs focus:outline-none focus:border-black"
+                          >
+                            <option value={0}>순서 선택 안함</option>
+                            {[1, 2, 3, 4, 5, 6].map(num => (
+                              <option key={num} value={num}>{num}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -840,6 +898,36 @@ export default function Admin() {
           {activeTab === "equipment" && (
             <div className="space-y-8">
               <h3 className="text-xl font-bold mb-8">EQUIPMENT 관리</h3>
+              
+              <div className="mb-12 p-6 bg-black/5 space-y-4">
+                <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40">EQUIPMENT 페이지 부가설명</label>
+                <textarea
+                  value={equipmentDescription}
+                  onChange={(e) => setEquipmentDescription(e.target.value)}
+                  className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-24"
+                  placeholder="EQUIPMENT 페이지 상단에 표시될 설명을 입력하세요."
+                />
+                <button 
+                  onClick={async () => {
+                    setIsSaving(true);
+                    try {
+                      await fetch("api/content", {
+                        method: "POST",
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ equipment_description: equipmentDescription }),
+                      });
+                      updateContent({ equipment_description: equipmentDescription });
+                      alert("설명이 저장되었습니다.");
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                  className="px-6 py-2 bg-black text-white text-[10px] font-bold tracking-widest uppercase hover:bg-black/90 transition-colors"
+                >
+                  설명 저장
+                </button>
+              </div>
+
               <div className="space-y-12">
                 {["Camera", "Lens", "Lighting", "Color"].map((cat) => (
                   <div key={cat} className="space-y-4">
@@ -965,6 +1053,36 @@ export default function Admin() {
           {activeTab === "contact" && (
             <div className="space-y-8">
               <h3 className="text-xl font-bold mb-8">CONTACT 설정</h3>
+
+              <div className="mb-12 p-6 bg-black/5 space-y-4">
+                <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40">CONTACT 페이지 부가설명</label>
+                <textarea
+                  value={contactDescription}
+                  onChange={(e) => setContactDescription(e.target.value)}
+                  className="w-full px-4 py-3 border border-black/10 text-sm focus:outline-none focus:border-black h-24"
+                  placeholder="CONTACT 페이지 상단에 표시될 설명을 입력하세요."
+                />
+                <button 
+                  onClick={async () => {
+                    setIsSaving(true);
+                    try {
+                      await fetch("api/content", {
+                        method: "POST",
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ contact_description: contactDescription }),
+                      });
+                      updateContent({ contact_description: contactDescription });
+                      alert("설명이 저장되었습니다.");
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                  className="px-6 py-2 bg-black text-white text-[10px] font-bold tracking-widest uppercase hover:bg-black/90 transition-colors"
+                >
+                  설명 저장
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 gap-6">
                 <div>
                   <label className="block text-[10px] font-bold tracking-widest uppercase text-black/40 mb-2">Email</label>

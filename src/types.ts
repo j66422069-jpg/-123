@@ -33,6 +33,7 @@ export interface ProjectData {
   summary: string;
   featured: boolean;
   sort_order?: number;
+  home_order?: number;
   thumbnailUrl: string;
   tech: {
     camera: string;

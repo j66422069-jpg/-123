@@ -37,8 +37,8 @@ export default function Contact() {
             Get in Touch
           </h2>
           <h1 className="text-4xl font-bold tracking-tight mb-8">연락처</h1>
-          <p className="text-lg text-black/60 max-w-2xl leading-relaxed">
-            새로운 프로젝트 제안이나 협업 문의는 언제든 환영합니다.
+          <p className="text-lg text-black/60 max-w-2xl leading-relaxed whitespace-pre-line">
+            {content?.contact_description || "새로운 프로젝트 제안이나 협업 문의는 언제든 환영합니다."}
           </p>
         </div>
 

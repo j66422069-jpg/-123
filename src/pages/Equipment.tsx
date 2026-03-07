@@ -4,7 +4,7 @@ import { Camera, Layers, Sun, Palette } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 
 export default function Equipment() {
-  const { equipment: items, fetchEquipment, equipmentLoaded } = useContent();
+  const { content, equipment: items, fetchEquipment, equipmentLoaded } = useContent();
 
   useEffect(() => {
     fetchEquipment();
@@ -36,8 +36,8 @@ export default function Equipment() {
             Equipment & Capability
           </h2>
           <h1 className="text-4xl font-bold tracking-tight mb-8">운용 장비 및 역량</h1>
-          <p className="text-lg text-black/60 max-w-2xl leading-relaxed">
-            단순한 장비 보유가 아닌, 각 장비의 특성을 이해하고 현장의 상황에 맞춰 최적의 결과물을 만들어내는 운용 역량에 집중합니다.
+          <p className="text-lg text-black/60 max-w-2xl leading-relaxed whitespace-pre-line">
+            {content?.equipment_description || "단순한 장비 보유가 아닌, 각 장비의 특성을 이해하고 현장의 상황에 맞춰 최적의 결과물을 만들어내는 운용 역량에 집중합니다."}
           </p>
         </div>
 
