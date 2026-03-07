@@ -27,7 +27,13 @@ export default function ProjectList() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-          {projects.map((project, index) => (
+          {[...projects]
+            .sort((a, b) => {
+              const orderA = a.sort_order ?? 999999;
+              const orderB = b.sort_order ?? 999999;
+              return orderA - orderB;
+            })
+            .map((project, index) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 20 }}

@@ -16,11 +16,13 @@ export default function Home() {
     featuredProjectIds: Array.isArray(content?.home_featuredProjectIds) ? content.home_featuredProjectIds : []
   };
 
-  const featuredProjects = (Array.isArray(projects) ? projects : [])
-    .filter(p => Boolean(p.featured) && (p.home_order || 0) > 0)
-    .sort((a, b) => (a.home_order || 0) - (b.home_order || 0));
-  
-  const displayProjects = featuredProjects.length > 0 ? featuredProjects : (Array.isArray(projects) ? projects : []);
+  const displayProjects = (Array.isArray(projects) ? projects : [])
+    .filter(p => p.featured === 1)
+    .sort((a, b) => {
+      const orderA = a.home_order ?? 999999;
+      const orderB = b.home_order ?? 999999;
+      return orderA - orderB;
+    });
 
   if (contentLoading && !content) {
     return <div className="max-w-7xl mx-auto px-6 py-20 text-black/20 font-bold tracking-widest uppercase">Loading...</div>;

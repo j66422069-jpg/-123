@@ -26,6 +26,7 @@ export default function Admin() {
   const [equipmentDescription, setEquipmentDescription] = useState("");
   const [contactDescription, setContactDescription] = useState("");
   const [hasOrderChanged, setHasOrderChanged] = useState(false);
+  const [hasHomeOrderChanged, setHasHomeOrderChanged] = useState(false);
 
   useEffect(() => {
     const token = sessionStorage.getItem("admin_token");
@@ -295,6 +296,29 @@ export default function Admin() {
     setHasOrderChanged(true);
   };
 
+  const moveHomeProject = (index: number, direction: 'up' | 'down') => {
+    const featuredProjects = projects.filter(p => p.featured === 1)
+                                     .sort((a, b) => (a.home_order || 0) - (b.home_order || 0));
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= featuredProjects.length) return;
+    
+    const newFeatured = [...featuredProjects];
+    [newFeatured[index], newFeatured[targetIndex]] = [newFeatured[targetIndex], newFeatured[index]];
+    
+    // Update the main projects list with new home_order
+    const updatedProjects = projects.map(p => {
+      const featuredIdx = newFeatured.findIndex(nf => nf.id === p.id);
+      if (featuredIdx !== -1) {
+        return { ...p, home_order: featuredIdx + 1 };
+      }
+      return p;
+    });
+    
+    setProjects(updatedProjects);
+    setHasHomeOrderChanged(true);
+  };
+
   const saveProjectOrder = async () => {
     if (isSaving) return;
     setIsSaving(true);
@@ -305,7 +329,7 @@ export default function Admin() {
       
       const orders = validProjects.map((p, index) => ({
         id: p.id,
-        sort_order: index
+        sort_order: index + 1
       }));
       
       const res = await fetch("api/projects/reorder", {
@@ -330,10 +354,54 @@ export default function Admin() {
       }
       
       setHasOrderChanged(false);
-      alert("순서가 저장되었습니다.");
+      alert("전체 프로젝트 순서가 저장되었습니다.");
     } catch (error: any) {
       console.error("Save Project Order error:", error);
       alert(`순서 저장 실패: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveHomeOrder = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    
+    try {
+      // Filter out invalid projects (no ID, no title, not featured)
+      const featuredProjects = projects.filter(p => p.id && p.featured === 1 && p.title && p.title.trim() !== "");
+      
+      const orders = featuredProjects.map((p, index) => ({
+        id: p.id,
+        home_order: index + 1
+      }));
+      
+      const res = await fetch("api/projects/reorder-home", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ orders }),
+      });
+      
+      if (await handleAuthError(res)) return;
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "HOME 순서 저장에 실패했습니다.");
+      }
+      
+      // Re-fetch projects to ensure everything is in sync
+      const projectsRes = await fetch("api/projects");
+      if (projectsRes.ok) {
+        const updatedProjects = await projectsRes.json();
+        setProjects(updatedProjects);
+        updateProjects(updatedProjects);
+      }
+      
+      setHasHomeOrderChanged(false);
+      alert("HOME 주요작업 순서가 저장되었습니다.");
+    } catch (error: any) {
+      console.error("Save Home Order error:", error);
+      alert(`HOME 순서 저장 실패: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -535,6 +603,56 @@ export default function Admin() {
               >
                 <Save size={16} /> {isSaving ? "SAVING..." : "SAVE CHANGES"}
               </button>
+
+              <div className="pt-12 border-t border-black/5">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold">HOME 주요작업 순서</h3>
+                  {hasHomeOrderChanged && (
+                    <button
+                      onClick={saveHomeOrder}
+                      disabled={isSaving}
+                      className="px-6 py-3 bg-emerald-600 text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:bg-emerald-700 transition-colors"
+                    >
+                      <Save size={14} /> SAVE HOME ORDER
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  {projects.filter(p => p.featured === 1)
+                    .sort((a, b) => (a.home_order || 0) - (b.home_order || 0))
+                    .map((p, idx, filteredArr) => (
+                    <div key={p.id} className="flex items-center justify-between p-4 bg-black/5 border border-black/5">
+                      <div className="flex items-center gap-4">
+                        <span className="text-[10px] font-bold text-black/20 w-4">{idx + 1}</span>
+                        <div className="w-12 h-8 bg-black/10 overflow-hidden">
+                          {p.thumbnailUrl && <img src={p.thumbnailUrl} className="w-full h-full object-cover" />}
+                        </div>
+                        <span className="text-xs font-bold">{p.title}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => moveHomeProject(idx, 'up')}
+                          disabled={idx === 0}
+                          className="p-2 hover:bg-black/5 disabled:opacity-20"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          onClick={() => moveHomeProject(idx, 'down')}
+                          disabled={idx === filteredArr.length - 1}
+                          className="p-2 hover:bg-black/5 disabled:opacity-20"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {projects.filter(p => p.featured === 1).length === 0 && (
+                    <p className="text-xs text-black/40 italic py-8 text-center">주요 작업으로 설정된 프로젝트가 없습니다.</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

@@ -232,7 +232,7 @@ async function startServer() {
       return;
     }
     // Ensure consistent sorting: sort_order ASC, then created_at DESC
-    const projects = db.prepare("SELECT * FROM projects ORDER BY sort_order ASC, created_at DESC").all() as any[];
+    const projects = db.prepare("SELECT * FROM projects ORDER BY CASE WHEN sort_order IS NULL THEN 1 ELSE 0 END, sort_order ASC, created_at DESC").all() as any[];
     const transformed = projects.map(p => ({
       ...p,
       thumbnailUrl: p.thumbnail_url,
@@ -454,7 +454,9 @@ async function startServer() {
       const updateStmt = db.prepare("UPDATE projects SET sort_order = ? WHERE id = ?");
       const transaction = db.transaction((items) => {
         for (const item of items) {
-          updateStmt.run(item.sort_order, item.id);
+          if (item.id) {
+            updateStmt.run(item.sort_order, item.id);
+          }
         }
       });
 
@@ -464,6 +466,33 @@ async function startServer() {
       console.error("Error reordering projects:", error);
       res.status(500).json({ 
         error: "Failed to reorder projects", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
+  app.post("/api/projects/reorder-home", (req, res) => {
+    try {
+      const { orders } = req.body; // Array of { id: number, home_order: number }
+      if (!Array.isArray(orders)) {
+        return res.status(400).json({ error: "Invalid orders format" });
+      }
+
+      const updateStmt = db.prepare("UPDATE projects SET home_order = ? WHERE id = ?");
+      const transaction = db.transaction((items) => {
+        for (const item of items) {
+          if (item.id) {
+            updateStmt.run(item.home_order, item.id);
+          }
+        }
+      });
+
+      transaction(orders);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering home projects:", error);
+      res.status(500).json({ 
+        error: "Failed to reorder home projects", 
         details: error instanceof Error ? error.message : String(error) 
       });
     }
