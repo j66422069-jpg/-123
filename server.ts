@@ -231,8 +231,8 @@ async function startServer() {
       }
       return;
     }
-    // Ensure consistent sorting: sort_order ASC, then created_at DESC
-    const projects = db.prepare("SELECT * FROM projects ORDER BY CASE WHEN sort_order IS NULL THEN 1 ELSE 0 END, sort_order ASC, created_at DESC").all() as any[];
+    // Ensure consistent sorting: sort_order ASC
+    const projects = db.prepare("SELECT * FROM projects ORDER BY sort_order ASC, id DESC").all() as any[];
     const transformed = projects.map(p => ({
       ...p,
       thumbnailUrl: p.thumbnail_url,
@@ -446,10 +446,12 @@ async function startServer() {
 
   app.post("/api/projects/reorder", (req, res) => {
     try {
-      const { orders } = req.body; // Array of { id: number, sort_order: number }
+      const orders = req.body; // Array of { id: number, sort_order: number }
       if (!Array.isArray(orders)) {
-        return res.status(400).json({ error: "Invalid orders format" });
+        return res.status(400).json({ error: "Invalid orders format. Expected an array." });
       }
+
+      console.log("[REORDER] Received payload:", JSON.stringify(orders));
 
       const updateStmt = db.prepare("UPDATE projects SET sort_order = ? WHERE id = ?");
       const transaction = db.transaction((items) => {
@@ -473,10 +475,12 @@ async function startServer() {
 
   app.post("/api/projects/reorder-home", (req, res) => {
     try {
-      const { orders } = req.body; // Array of { id: number, home_order: number }
+      const orders = req.body; // Array of { id: number, home_order: number }
       if (!Array.isArray(orders)) {
-        return res.status(400).json({ error: "Invalid orders format" });
+        return res.status(400).json({ error: "Invalid orders format. Expected an array." });
       }
+
+      console.log("[REORDER-HOME] Received payload:", JSON.stringify(orders));
 
       const updateStmt = db.prepare("UPDATE projects SET home_order = ? WHERE id = ?");
       const transaction = db.transaction((items) => {

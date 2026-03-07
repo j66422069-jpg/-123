@@ -41,9 +41,9 @@ export default function Admin() {
       const fetchData = async () => {
         try {
           const [contentRes, projectsRes, equipmentRes] = await Promise.all([
-            fetch("api/content"),
-            fetch("api/projects"),
-            fetch("api/equipment")
+            fetch("/api/content"),
+            fetch("/api/projects"),
+            fetch("/api/equipment")
           ]);
 
           if (contentRes.ok) {
@@ -144,7 +144,7 @@ export default function Admin() {
         home_resumeUrl: home.resumeUrl,
         home_featuredProjectIds: home.featuredProjectIds
       };
-      const res = await fetch("api/content", {
+      const res = await fetch("/api/content", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -174,7 +174,7 @@ export default function Admin() {
         about_services: about.about_services,
         about_experience: about.about_experience
       };
-      const res = await fetch("api/content", {
+      const res = await fetch("/api/content", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -205,7 +205,7 @@ export default function Admin() {
         contact_phone: contact.phone,
         contact_resumeUrl: contact.resumeUrl
       };
-      const res = await fetch("api/content", {
+      const res = await fetch("/api/content", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -236,7 +236,7 @@ export default function Admin() {
 
     setIsSaving(true);
     const method = editingProject.id ? "PUT" : "POST";
-    const url = editingProject.id ? `api/projects?id=${editingProject.id}` : "api/projects";
+    const url = editingProject.id ? `/api/projects?id=${editingProject.id}` : "/api/projects";
     
     // For new projects, set sort_order to be at the top
     const projectToSave = { ...editingProject };
@@ -266,7 +266,7 @@ export default function Admin() {
       const projectId = editingProject.id || savedProject.id;
       
       // Fetch full project list to ensure correct order and data
-      const projectsRes = await fetch("api/projects");
+      const projectsRes = await fetch("/api/projects");
       if (projectsRes.ok) {
         const updatedProjects = await projectsRes.json();
         setProjects(updatedProjects);
@@ -324,18 +324,26 @@ export default function Admin() {
     setIsSaving(true);
     
     try {
-      // Filter out invalid projects (no ID or no title)
-      const validProjects = projects.filter(p => p.id && p.title && p.title.trim() !== "");
+      // STRICT FILTERING: id must exist, title must not be empty, must not be a temporary/empty object
+      const validProjects = projects.filter(p => 
+        p && 
+        p.id && 
+        typeof p.id === 'number' && 
+        p.title && 
+        p.title.trim() !== ""
+      );
       
-      const orders = validProjects.map((p, index) => ({
+      const payload = validProjects.map((p, index) => ({
         id: p.id,
         sort_order: index + 1
       }));
       
-      const res = await fetch("api/projects/reorder", {
+      console.log("[REORDER] Final Payload to send:", payload);
+      
+      const res = await fetch("/api/projects/reorder", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ orders }),
+        body: JSON.stringify(payload),
       });
       
       if (await handleAuthError(res)) return;
@@ -346,7 +354,7 @@ export default function Admin() {
       }
       
       // Re-fetch projects to ensure everything is in sync
-      const projectsRes = await fetch("api/projects");
+      const projectsRes = await fetch("/api/projects");
       if (projectsRes.ok) {
         const updatedProjects = await projectsRes.json();
         setProjects(updatedProjects);
@@ -368,18 +376,30 @@ export default function Admin() {
     setIsSaving(true);
     
     try {
-      // Filter out invalid projects (no ID, no title, not featured)
-      const featuredProjects = projects.filter(p => p.id && p.featured === 1 && p.title && p.title.trim() !== "");
+      // STRICT FILTERING: id must exist, title must not be empty, must be featured
+      const featuredProjects = projects.filter(p => 
+        p && 
+        p.id && 
+        typeof p.id === 'number' && 
+        p.featured === 1 && 
+        p.title && 
+        p.title.trim() !== ""
+      );
       
-      const orders = featuredProjects.map((p, index) => ({
+      // Sort by current home_order to ensure we maintain relative order if just moving
+      const sortedFeatured = [...featuredProjects].sort((a, b) => (a.home_order || 0) - (b.home_order || 0));
+      
+      const payload = sortedFeatured.map((p, index) => ({
         id: p.id,
         home_order: index + 1
       }));
       
-      const res = await fetch("api/projects/reorder-home", {
+      console.log("[REORDER-HOME] Final Payload to send:", payload);
+      
+      const res = await fetch("/api/projects/reorder-home", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ orders }),
+        body: JSON.stringify(payload),
       });
       
       if (await handleAuthError(res)) return;
@@ -390,7 +410,7 @@ export default function Admin() {
       }
       
       // Re-fetch projects to ensure everything is in sync
-      const projectsRes = await fetch("api/projects");
+      const projectsRes = await fetch("/api/projects");
       if (projectsRes.ok) {
         const updatedProjects = await projectsRes.json();
         setProjects(updatedProjects);
@@ -411,7 +431,7 @@ export default function Admin() {
     if (!confirm("정말 삭제하시겠습니까?") || isSaving) return;
     setIsSaving(true);
     try {
-      const res = await fetch(`api/projects?id=${id}`, { 
+      const res = await fetch(`/api/projects?id=${id}`, { 
         method: "DELETE",
         headers: getAuthHeaders(null)
       });
@@ -482,7 +502,7 @@ export default function Admin() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const res = await fetch("api/upload", {
+        const res = await fetch("/api/upload", {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({ image: reader.result as string }),
@@ -500,7 +520,7 @@ export default function Admin() {
     if (file && about) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const res = await fetch("api/upload", {
+        const res = await fetch("/api/upload", {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({ image: reader.result as string }),
@@ -723,7 +743,7 @@ export default function Admin() {
                   )}
                   <button
                     onClick={() => setEditingProject({
-                      title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, home_order: 0, thumbnailUrl: "",
+                      title: "", year: "", type: "", category: "", description: "", role: "", summary: "", featured: false, sort_order: 0, home_order: 0, thumbnailUrl: "",
                       tech: { camera: "", lens: "", lighting: "", color: "" },
                       videos: []
                     })}
@@ -994,7 +1014,7 @@ export default function Admin() {
                       <div className="flex items-center gap-4">
                         <button 
                           onClick={async () => {
-                            const res = await fetch(`api/projects?id=${p.id}`);
+                            const res = await fetch(`/api/projects?id=${p.id}`);
                             if (res.ok) {
                               const fullProject = await res.json();
                               setEditingProject(fullProject);
@@ -1029,7 +1049,7 @@ export default function Admin() {
                   onClick={async () => {
                     setIsSaving(true);
                     try {
-                      await fetch("api/content", {
+                      await fetch("/api/content", {
                         method: "POST",
                         headers: getAuthHeaders(),
                         body: JSON.stringify({ equipment_description: equipmentDescription }),
@@ -1184,7 +1204,7 @@ export default function Admin() {
                   onClick={async () => {
                     setIsSaving(true);
                     try {
-                      await fetch("api/content", {
+                      await fetch("/api/content", {
                         method: "POST",
                         headers: getAuthHeaders(),
                         body: JSON.stringify({ contact_description: contactDescription }),
