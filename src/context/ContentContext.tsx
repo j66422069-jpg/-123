@@ -36,7 +36,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setFetching(true);
     try {
-      const res = await fetch("api/content");
+      const res = await fetch("/api/content");
       if (res.ok) {
         const data = await res.json();
         setContent(data);
@@ -54,7 +54,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setFetchingProjects(true);
     try {
-      const res = await fetch("api/projects");
+      const res = await fetch("/api/projects");
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -75,7 +75,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setFetchingEquipment(true);
     try {
-      const res = await fetch("api/equipment");
+      const res = await fetch("/api/equipment");
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -94,7 +94,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!force && projectDetails[id]) return projectDetails[id];
     
     try {
-      const res = await fetch(`api/projects?id=${id}`);
+      const res = await fetch(`/api/projects?id=${id}`);
       if (res.ok) {
         const data = await res.json();
         setProjectDetails(prev => ({ ...prev, [id]: data }));

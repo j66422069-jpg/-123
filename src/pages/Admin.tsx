@@ -451,7 +451,7 @@ export default function Admin() {
     if (isSaving) return;
     setIsSaving(true);
     const method = item.id ? "PUT" : "POST";
-    const url = item.id ? `api/equipment?id=${item.id}` : "api/equipment";
+    const url = item.id ? `/api/equipment?id=${item.id}` : "/api/equipment";
     try {
       const res = await fetch(url, {
         method,
@@ -481,7 +481,7 @@ export default function Admin() {
     if (isSaving) return;
     setIsSaving(true);
     try {
-      const res = await fetch(`api/equipment?id=${id}`, { 
+      const res = await fetch(`/api/equipment?id=${id}`, { 
         method: "DELETE",
         headers: getAuthHeaders(null)
       });
