@@ -17,11 +17,21 @@ export default function Home() {
   };
 
   const displayProjects = (Array.isArray(projects) ? projects : [])
-    .filter(p => p.featured === 1)
+    .filter(p => p.featured === 1 || p.featured === true)
     .sort((a, b) => {
-      const orderA = a.home_order ?? 999999;
-      const orderB = b.home_order ?? 999999;
-      return orderA - orderB;
+      // 1st priority: home_order (if > 0)
+      const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;
+      const orderB = b.home_order && b.home_order > 0 ? b.home_order : 999999;
+      
+      if (orderA !== orderB) return orderA - orderB;
+      
+      // 2nd priority fallback: sort_order
+      const sortA = a.sort_order && a.sort_order > 0 ? a.sort_order : 999999;
+      const sortB = b.sort_order && b.sort_order > 0 ? b.sort_order : 999999;
+      if (sortA !== sortB) return sortA - sortB;
+      
+      // 3rd priority fallback: id (created_at proxy)
+      return (a.id || 0) - (b.id || 0);
     });
 
   if (contentLoading && !content) {

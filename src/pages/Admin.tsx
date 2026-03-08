@@ -297,8 +297,13 @@ export default function Admin() {
   };
 
   const moveHomeProject = (index: number, direction: 'up' | 'down') => {
-    const featuredProjects = projects.filter(p => p.featured === 1)
-                                     .sort((a, b) => (a.home_order || 0) - (b.home_order || 0));
+    const featuredProjects = projects.filter(p => p.featured === 1 || p.featured === true)
+                                     .sort((a, b) => {
+                                       const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;
+                                       const orderB = b.home_order && b.home_order > 0 ? b.home_order : 999999;
+                                       if (orderA !== orderB) return orderA - orderB;
+                                       return (a.id || 0) - (b.id || 0);
+                                     });
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     
     if (targetIndex < 0 || targetIndex >= featuredProjects.length) return;
@@ -330,7 +335,8 @@ export default function Admin() {
         p.id && 
         typeof p.id === 'number' && 
         p.title && 
-        p.title.trim() !== ""
+        p.title.trim() !== "" &&
+        Object.keys(p).length > 2 // Ensure it's not just {id, title} or similar empty-ish object
       );
       
       const payload = validProjects.map((p, index) => ({
@@ -338,7 +344,7 @@ export default function Admin() {
         sort_order: index + 1
       }));
       
-      console.log("[REORDER] Final Payload to send:", payload);
+      console.log(">>> [PROJECT ORDER SAVE] Payload:", JSON.stringify(payload));
       
       const res = await fetch("/api/projects/reorder", {
         method: "POST",
@@ -381,20 +387,26 @@ export default function Admin() {
         p && 
         p.id && 
         typeof p.id === 'number' && 
-        p.featured === 1 && 
+        (p.featured === 1 || p.featured === true) && 
         p.title && 
-        p.title.trim() !== ""
+        p.title.trim() !== "" &&
+        Object.keys(p).length > 2
       );
       
       // Sort by current home_order to ensure we maintain relative order if just moving
-      const sortedFeatured = [...featuredProjects].sort((a, b) => (a.home_order || 0) - (b.home_order || 0));
+      const sortedFeatured = [...featuredProjects].sort((a, b) => {
+        const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;
+        const orderB = b.home_order && b.home_order > 0 ? b.home_order : 999999;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.id || 0) - (b.id || 0);
+      });
       
       const payload = sortedFeatured.map((p, index) => ({
         id: p.id,
         home_order: index + 1
       }));
       
-      console.log("[REORDER-HOME] Final Payload to send:", payload);
+      console.log(">>> [HOME ORDER SAVE] Payload:", JSON.stringify(payload));
       
       const res = await fetch("/api/projects/reorder-home", {
         method: "POST",

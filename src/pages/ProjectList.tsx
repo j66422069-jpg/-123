@@ -29,9 +29,11 @@ export default function ProjectList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {[...projects]
             .sort((a, b) => {
-              const orderA = a.sort_order ?? 999999;
-              const orderB = b.sort_order ?? 999999;
-              return orderA - orderB;
+              const orderA = a.sort_order && a.sort_order > 0 ? a.sort_order : 999999;
+              const orderB = b.sort_order && b.sort_order > 0 ? b.sort_order : 999999;
+              
+              if (orderA !== orderB) return orderA - orderB;
+              return (a.id || 0) - (b.id || 0);
             })
             .map((project, index) => (
             <motion.div
