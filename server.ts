@@ -231,8 +231,8 @@ async function startServer() {
       }
       return;
     }
-    // Ensure consistent sorting: sort_order ASC
-    const projects = db.prepare("SELECT * FROM projects ORDER BY sort_order ASC, id DESC").all() as any[];
+    // Ensure consistent sorting: sort_order ASC, nulls last
+    const projects = db.prepare("SELECT * FROM projects WHERE title IS NOT NULL AND title != '' ORDER BY CASE WHEN sort_order IS NULL THEN 1 ELSE 0 END, sort_order ASC, id DESC").all() as any[];
     const transformed = projects.map(p => ({
       ...p,
       thumbnailUrl: p.thumbnail_url,
@@ -490,6 +490,10 @@ async function startServer() {
   app.post("/api/projects/reorder", (req, res) => {
     try {
       const orders = req.body; // Array of { id: number, sort_order: number }
+      
+      console.log("reorder only called");
+      console.log("/api/projects/reorder payload", JSON.stringify(orders));
+
       if (!Array.isArray(orders) || orders.length === 0) {
         return res.status(400).json({ error: "Invalid orders format. Expected a non-empty array." });
       }
@@ -505,16 +509,10 @@ async function startServer() {
         }
       }
 
-      console.log("PROJECT ORDER PAYLOAD", JSON.stringify(orders));
-
       const updateStmt = db.prepare("UPDATE projects SET sort_order = ? WHERE id = ?");
       const transaction = db.transaction((items) => {
         for (const item of items) {
-          const result = updateStmt.run(item.sort_order, item.id);
-          if (result.changes === 0) {
-            // Optional: log if an ID wasn't found, but don't fail the whole transaction usually
-            // unless strict existence is required.
-          }
+          updateStmt.run(item.sort_order, item.id);
         }
       });
 
@@ -532,6 +530,10 @@ async function startServer() {
   app.post("/api/projects/reorder-home", (req, res) => {
     try {
       const orders = req.body; // Array of { id: number, home_order: number }
+      
+      console.log("reorder home only called");
+      console.log("/api/projects/reorder-home payload", JSON.stringify(orders));
+
       if (!Array.isArray(orders) || orders.length === 0) {
         return res.status(400).json({ error: "Invalid orders format. Expected a non-empty array." });
       }
@@ -546,8 +548,6 @@ async function startServer() {
           return res.status(400).json({ error: "Reorder payload must only contain id and home_order." });
         }
       }
-
-      console.log("HOME ORDER PAYLOAD", JSON.stringify(orders));
 
       const updateStmt = db.prepare("UPDATE projects SET home_order = ? WHERE id = ?");
       const transaction = db.transaction((items) => {

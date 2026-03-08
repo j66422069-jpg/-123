@@ -17,7 +17,7 @@ export default function Home() {
   };
 
   const displayProjects = (Array.isArray(projects) ? projects : [])
-    .filter(p => p.featured === 1 || p.featured === true)
+    .filter(p => (p.featured === 1 || p.featured === true) && p.title && p.title.trim() !== "")
     .sort((a, b) => {
       // 1st priority: home_order (if > 0)
       const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;

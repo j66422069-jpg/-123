@@ -340,8 +340,15 @@ export default function Admin() {
     setHasHomeOrderChanged(true);
   };
 
-  const handleSaveProjectOrder = async () => {
+  const handleSaveProjectOrder = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (isSaving) return;
+    
+    console.log("reorder only called");
+    console.log("general project save blocked during reorder");
+    
     setIsSaving(true);
     
     try {
@@ -373,7 +380,7 @@ export default function Admin() {
       }));
       
       // 4. Mandatory console log
-      console.log("PROJECT ORDER PAYLOAD", payload);
+      console.log("/api/projects/reorder payload", payload);
       
       if (payload.length === 0) {
         alert("저장할 유효한 프로젝트가 없습니다.");
@@ -412,8 +419,15 @@ export default function Admin() {
     }
   };
 
-  const handleSaveHomeOrder = async () => {
+  const handleSaveHomeOrder = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (isSaving) return;
+
+    console.log("reorder home only called");
+    console.log("general project save blocked during reorder");
+
     setIsSaving(true);
     
     try {
@@ -448,7 +462,7 @@ export default function Admin() {
       }));
       
       // 4. Mandatory console log
-      console.log("HOME ORDER PAYLOAD", payload);
+      console.log("/api/projects/reorder-home payload", payload);
       
       if (payload.length === 0) {
         alert("저장할 유효한 주요작업이 없습니다.");
@@ -689,7 +703,8 @@ export default function Admin() {
                   <h3 className="text-xl font-bold">HOME 주요작업 순서</h3>
                   {hasHomeOrderChanged && (
                     <button
-                      onClick={handleSaveHomeOrder}
+                      type="button"
+                      onClick={(e) => handleSaveHomeOrder(e)}
                       disabled={isSaving}
                       className="px-6 py-3 bg-emerald-600 text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:bg-emerald-700 transition-colors"
                     >
@@ -799,7 +814,8 @@ export default function Admin() {
                 <div className="flex gap-4">
                   {hasOrderChanged && (
                     <button
-                      onClick={handleSaveProjectOrder}
+                      type="button"
+                      onClick={(e) => handleSaveProjectOrder(e)}
                       disabled={isSaving}
                       className="px-6 py-3 bg-emerald-600 text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:bg-emerald-700 transition-colors"
                     >
