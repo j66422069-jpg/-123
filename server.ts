@@ -270,25 +270,34 @@ async function startServer() {
     try {
       const body = req.body;
       
-      // Prevent empty project creation
-      if (!body.title || body.title.trim() === "") {
+      // Defensive logic: Prevent empty project creation
+      const title = body.title?.trim() || "";
+      const description = body.description?.trim() || "";
+      const thumbnail_url = (body.thumbnailUrl || body.thumbnail_url || "").trim();
+
+      // Reject if title is empty OR if all core fields are empty
+      if (!title) {
         return res.status(400).json({ error: "Project title is required" });
+      }
+      
+      if (!title && !description && !thumbnail_url) {
+        return res.status(400).json({ error: "Cannot create an empty project row. Title, description, or thumbnail is required." });
       }
 
       const row = {
-        title: body.title ?? "",
+        title: title,
         year: body.year ?? null,
         type: body.type ?? null,
         role: body.role ?? null,
         summary: body.summary ?? null,
         featured: body.featured ? 1 : 0,
-        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        thumbnail_url: thumbnail_url || null,
         tech_camera: body.techCamera ?? body.tech?.camera ?? body.tech_camera ?? null,
         tech_lens: body.techLens ?? body.tech?.lens ?? body.tech_lens ?? null,
         tech_lighting: body.techLighting ?? body.tech?.lighting ?? body.tech_lighting ?? null,
         tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
         link: body.link ?? null,
-        description: body.description ?? null,
+        description: description || null,
         sort_order: body.sort_order ?? 0,
         home_order: body.home_order ?? 0,
         updated_at: new Date().toISOString()
@@ -311,7 +320,9 @@ async function startServer() {
       if (body.videos && Array.isArray(body.videos)) {
         const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
         for (const v of body.videos) {
-          stmt.run(projectId, v.title, v.description, v.youtubeUrl ?? v.youtube_url);
+          if (v.youtubeUrl || v.youtube_url) {
+            stmt.run(projectId, v.title || "", v.description || "", v.youtubeUrl ?? v.youtube_url);
+          }
         }
       }
       res.json({ id: projectId });
@@ -327,26 +338,36 @@ async function startServer() {
       if (!id) return res.status(400).json({ error: "Missing project id" });
       
       const body = req.body;
+      
+      // Defensive logic: Prevent empty project update
+      const title = body.title?.trim() || "";
+      const description = body.description?.trim() || "";
+      const thumbnail_url = (body.thumbnailUrl || body.thumbnail_url || "").trim();
+
+      if (!title && !description && !thumbnail_url) {
+        return res.status(400).json({ error: "Cannot update to an empty project row. Title, description, or thumbnail is required." });
+      }
+
       const row = {
-        title: body.title ?? "",
+        title: title,
         year: body.year ?? null,
         type: body.type ?? null,
         role: body.role ?? null,
         summary: body.summary ?? null,
         featured: body.featured ? 1 : 0,
-        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        thumbnail_url: thumbnail_url || null,
         tech_camera: body.techCamera ?? body.tech?.camera ?? body.tech_camera ?? null,
         tech_lens: body.techLens ?? body.tech?.lens ?? body.tech_lens ?? null,
         tech_lighting: body.techLighting ?? body.tech?.lighting ?? body.tech_lighting ?? null,
         tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
         link: body.link ?? null,
-        description: body.description ?? null,
+        description: description || null,
         sort_order: body.sort_order !== undefined ? body.sort_order : 0,
         home_order: body.home_order !== undefined ? body.home_order : 0,
         updated_at: new Date().toISOString()
       };
 
-      db.prepare(`
+      const result = db.prepare(`
         UPDATE projects SET 
           title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
           tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
@@ -359,11 +380,17 @@ async function startServer() {
         id
       );
 
+      if (result.changes === 0) {
+        return res.status(404).json({ error: "Project not found for update" });
+      }
+
       db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
       if (body.videos && Array.isArray(body.videos)) {
         const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
         for (const v of body.videos) {
-          stmt.run(id, v.title, v.description, v.youtubeUrl ?? v.youtube_url);
+          if (v.youtubeUrl || v.youtube_url) {
+            stmt.run(id, v.title || "", v.description || "", v.youtubeUrl ?? v.youtube_url);
+          }
         }
       }
       res.json({ success: true });
@@ -391,26 +418,36 @@ async function startServer() {
       if (!id) return res.status(400).json({ error: "Missing project id" });
 
       const body = req.body;
+      
+      // Defensive logic: Prevent empty project update
+      const title = body.title?.trim() || "";
+      const description = body.description?.trim() || "";
+      const thumbnail_url = (body.thumbnailUrl || body.thumbnail_url || "").trim();
+
+      if (!title && !description && !thumbnail_url) {
+        return res.status(400).json({ error: "Cannot update to an empty project row. Title, description, or thumbnail is required." });
+      }
+
       const row = {
-        title: body.title ?? "",
+        title: title,
         year: body.year ?? null,
         type: body.type ?? null,
         role: body.role ?? null,
         summary: body.summary ?? null,
         featured: body.featured ? 1 : 0,
-        thumbnail_url: body.thumbnailUrl ?? body.thumbnail_url ?? null,
+        thumbnail_url: thumbnail_url || null,
         tech_camera: body.techCamera ?? body.tech?.camera ?? body.tech_camera ?? null,
         tech_lens: body.techLens ?? body.tech?.lens ?? body.tech_lens ?? null,
         tech_lighting: body.techLighting ?? body.tech?.lighting ?? body.tech_lighting ?? null,
         tech_color: body.techColor ?? body.tech?.color ?? body.tech_color ?? null,
         link: body.link ?? null,
-        description: body.description ?? null,
+        description: description || null,
         sort_order: body.sort_order !== undefined ? body.sort_order : 0,
         home_order: body.home_order !== undefined ? body.home_order : 0,
         updated_at: new Date().toISOString()
       };
 
-      db.prepare(`
+      const result = db.prepare(`
         UPDATE projects SET 
           title = ?, year = ?, type = ?, role = ?, summary = ?, featured = ?, thumbnail_url = ?,
           tech_camera = ?, tech_lens = ?, tech_lighting = ?, tech_color = ?,
@@ -423,11 +460,17 @@ async function startServer() {
         id
       );
 
+      if (result.changes === 0) {
+        return res.status(404).json({ error: "Project not found for update" });
+      }
+
       db.prepare("DELETE FROM project_videos WHERE project_id = ?").run(id);
       if (body.videos && Array.isArray(body.videos)) {
         const stmt = db.prepare("INSERT INTO project_videos (project_id, title, description, youtube_url) VALUES (?, ?, ?, ?)");
         for (const v of body.videos) {
-          stmt.run(id, v.title, v.description, v.youtubeUrl ?? v.youtube_url);
+          if (v.youtubeUrl || v.youtube_url) {
+            stmt.run(id, v.title || "", v.description || "", v.youtubeUrl ?? v.youtube_url);
+          }
         }
       }
       res.json({ success: true });

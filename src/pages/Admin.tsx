@@ -234,6 +234,16 @@ export default function Admin() {
       return;
     }
 
+    // Additional defensive check for empty project
+    const hasTitle = editingProject.title && editingProject.title.trim() !== "";
+    const hasDescription = editingProject.description && editingProject.description.trim() !== "";
+    const hasThumbnail = editingProject.thumbnailUrl && editingProject.thumbnailUrl.trim() !== "";
+    
+    if (!hasTitle && !hasDescription && !hasThumbnail) {
+      alert("최소한 제목, 설명, 또는 썸네일 중 하나는 입력해야 합니다.");
+      return;
+    }
+
     setIsSaving(true);
     const method = editingProject.id ? "PUT" : "POST";
     const url = editingProject.id ? `/api/projects?id=${editingProject.id}` : "/api/projects";
@@ -246,6 +256,9 @@ export default function Admin() {
         : 0;
       projectToSave.sort_order = minOrder - 1;
     }
+    
+    // Log payload for verification
+    console.log(`[SAVE PROJECT] Method: ${method}, Payload:`, projectToSave);
     
     try {
       const res = await fetch(url, {
@@ -329,21 +342,39 @@ export default function Admin() {
     setIsSaving(true);
     
     try {
-      // STRICT FILTERING: id must exist, title must not be empty, must not be a temporary/empty object
-      const validProjects = projects.filter(p => 
-        p && 
-        p.id && 
-        typeof p.id === 'number' && 
-        p.title && 
-        p.title.trim() !== "" &&
-        Object.keys(p).length > 2 // Ensure it's not just {id, title} or similar empty-ish object
-      );
+      // 1. Get current projects from state (reflects UI order)
+      // 2. Filter: must have id, title must not be empty, and must not be a placeholder/draft
+      const validProjects = projects.filter(p => {
+        if (!p || !p.id) return false;
+        const title = (p.title || "").trim();
+        const desc = (p.description || "").trim();
+        const thumb = (p.thumbnailUrl || p.thumbnail_url || "").trim();
+        
+        // Exclude if title is empty OR if all core fields are empty
+        if (!title) return false;
+        if (!title && !desc && !thumb) return false;
+        
+        // Exclude placeholders or UI-only items (if any have specific flags)
+        if (p.isPlaceholder || p.isDraft || p.isTemp) return false;
+        
+        return true;
+      });
       
+      // 3. Create payload with ONLY id and sort_order
       const payload = validProjects.map((p, index) => ({
         id: p.id,
         sort_order: index + 1
       }));
       
+      // 6. Mandatory console log
+      console.log("[SAVE PROJECT ORDER] Payload:", payload);
+      
+      if (payload.length === 0) {
+        alert("저장할 유효한 프로젝트가 없습니다.");
+        setIsSaving(false);
+        return;
+      }
+
       const res = await fetch("/api/projects/reorder", {
         method: "POST",
         headers: getAuthHeaders(),
@@ -380,18 +411,23 @@ export default function Admin() {
     setIsSaving(true);
     
     try {
-      // STRICT FILTERING: id must exist, title must not be empty, must be featured
-      const featuredProjects = projects.filter(p => 
-        p && 
-        p.id && 
-        typeof p.id === 'number' && 
-        (p.featured === 1 || p.featured === true) && 
-        p.title && 
-        p.title.trim() !== "" &&
-        Object.keys(p).length > 2
-      );
+      // 1. Get featured projects that have id and title, and are not placeholders
+      const featuredProjects = projects.filter(p => {
+        if (!p || !p.id) return false;
+        if (!(p.featured === 1 || p.featured === true)) return false;
+        
+        const title = (p.title || "").trim();
+        const desc = (p.description || "").trim();
+        const thumb = (p.thumbnailUrl || p.thumbnail_url || "").trim();
+        
+        if (!title) return false;
+        if (!title && !desc && !thumb) return false;
+        if (p.isPlaceholder || p.isDraft || p.isTemp) return false;
+        
+        return true;
+      });
       
-      // Sort by current home_order to ensure we maintain relative order if just moving
+      // 2. Sort them exactly as they are displayed in the UI
       const sortedFeatured = [...featuredProjects].sort((a, b) => {
         const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;
         const orderB = b.home_order && b.home_order > 0 ? b.home_order : 999999;
@@ -399,11 +435,21 @@ export default function Admin() {
         return (a.id || 0) - (b.id || 0);
       });
       
+      // 3. Create payload with ONLY id and home_order
       const payload = sortedFeatured.map((p, index) => ({
         id: p.id,
         home_order: index + 1
       }));
       
+      // 6. Mandatory console log
+      console.log("[SAVE HOME ORDER] Payload:", payload);
+      
+      if (payload.length === 0) {
+        alert("저장할 유효한 주요작업이 없습니다.");
+        setIsSaving(false);
+        return;
+      }
+
       const res = await fetch("/api/projects/reorder-home", {
         method: "POST",
         headers: getAuthHeaders(),
@@ -648,7 +694,12 @@ export default function Admin() {
                 
                 <div className="space-y-2">
                   {projects.filter(p => p.featured === 1 || p.featured === true)
-                    .sort((a, b) => (a.home_order || 0) - (b.home_order || 0))
+                    .sort((a, b) => {
+                      const orderA = a.home_order && a.home_order > 0 ? a.home_order : 999999;
+                      const orderB = b.home_order && b.home_order > 0 ? b.home_order : 999999;
+                      if (orderA !== orderB) return orderA - orderB;
+                      return (a.id || 0) - (b.id || 0);
+                    })
                     .map((p, idx, filteredArr) => (
                     <div key={p.id} className="flex items-center justify-between p-4 bg-black/5 border border-black/5">
                       <div className="flex items-center gap-4">
