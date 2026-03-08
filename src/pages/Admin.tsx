@@ -344,10 +344,9 @@ export default function Admin() {
     e.preventDefault();
     e.stopPropagation();
     
-    if (isSaving) return;
+    console.log("PROJECT reorder clicked");
     
-    console.log("reorder only called");
-    console.log("general project save blocked during reorder");
+    if (isSaving) return;
     
     setIsSaving(true);
     
@@ -380,7 +379,8 @@ export default function Admin() {
       }));
       
       // 4. Mandatory console log
-      console.log("/api/projects/reorder payload", payload);
+      console.log("reorder payload", payload);
+      console.log("general project save blocked");
       
       if (payload.length === 0) {
         alert("저장할 유효한 프로젝트가 없습니다.");
@@ -423,10 +423,9 @@ export default function Admin() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (isSaving) return;
+    console.log("HOME reorder clicked");
 
-    console.log("reorder home only called");
-    console.log("general project save blocked during reorder");
+    if (isSaving) return;
 
     setIsSaving(true);
     
@@ -462,7 +461,8 @@ export default function Admin() {
       }));
       
       // 4. Mandatory console log
-      console.log("/api/projects/reorder-home payload", payload);
+      console.log("reorder payload", payload);
+      console.log("general project save blocked");
       
       if (payload.length === 0) {
         alert("저장할 유효한 주요작업이 없습니다.");
