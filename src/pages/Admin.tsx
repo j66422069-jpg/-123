@@ -305,7 +305,10 @@ export default function Admin() {
     
     [newProjects[index], newProjects[targetIndex]] = [newProjects[targetIndex], newProjects[index]];
     
-    setProjects(newProjects);
+    // Update sort_order for all items based on their new index
+    const updated = newProjects.map((p, idx) => ({ ...p, sort_order: idx + 1 }));
+    
+    setProjects(updated);
     setHasOrderChanged(true);
   };
 
@@ -337,25 +340,28 @@ export default function Admin() {
     setHasHomeOrderChanged(true);
   };
 
-  const saveProjectOrder = async () => {
+  const handleSaveProjectOrder = async () => {
     if (isSaving) return;
     setIsSaving(true);
     
     try {
       // 1. Get current projects from state (reflects UI order)
-      // 2. Filter: must have id, title must not be empty, and must not be a placeholder/draft
+      // 2. Strict Filter: exclude invalid/placeholder/draft items
       const validProjects = projects.filter(p => {
         if (!p || !p.id) return false;
+        
         const title = (p.title || "").trim();
         const desc = (p.description || "").trim();
         const thumb = (p.thumbnailUrl || p.thumbnail_url || "").trim();
         
-        // Exclude if title is empty OR if all core fields are empty
+        // Rule: Must have a title
         if (!title) return false;
+        
+        // Rule: Must not be entirely empty
         if (!title && !desc && !thumb) return false;
         
-        // Exclude placeholders or UI-only items (if any have specific flags)
-        if (p.isPlaceholder || p.isDraft || p.isTemp) return false;
+        // Rule: Exclude placeholders, drafts, or temp items
+        if (p.isPlaceholder || p.isDraft || p.isTemp || p.id === "new" || p.id === 0) return false;
         
         return true;
       });
@@ -366,8 +372,8 @@ export default function Admin() {
         sort_order: index + 1
       }));
       
-      // 6. Mandatory console log
-      console.log("[SAVE PROJECT ORDER] Payload:", payload);
+      // 4. Mandatory console log
+      console.log("PROJECT ORDER PAYLOAD", payload);
       
       if (payload.length === 0) {
         alert("저장할 유효한 프로젝트가 없습니다.");
@@ -406,7 +412,7 @@ export default function Admin() {
     }
   };
 
-  const saveHomeOrder = async () => {
+  const handleSaveHomeOrder = async () => {
     if (isSaving) return;
     setIsSaving(true);
     
@@ -422,7 +428,7 @@ export default function Admin() {
         
         if (!title) return false;
         if (!title && !desc && !thumb) return false;
-        if (p.isPlaceholder || p.isDraft || p.isTemp) return false;
+        if (p.isPlaceholder || p.isDraft || p.isTemp || p.id === "new" || p.id === 0) return false;
         
         return true;
       });
@@ -441,8 +447,8 @@ export default function Admin() {
         home_order: index + 1
       }));
       
-      // 6. Mandatory console log
-      console.log("[SAVE HOME ORDER] Payload:", payload);
+      // 4. Mandatory console log
+      console.log("HOME ORDER PAYLOAD", payload);
       
       if (payload.length === 0) {
         alert("저장할 유효한 주요작업이 없습니다.");
@@ -683,7 +689,7 @@ export default function Admin() {
                   <h3 className="text-xl font-bold">HOME 주요작업 순서</h3>
                   {hasHomeOrderChanged && (
                     <button
-                      onClick={saveHomeOrder}
+                      onClick={handleSaveHomeOrder}
                       disabled={isSaving}
                       className="px-6 py-3 bg-emerald-600 text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:bg-emerald-700 transition-colors"
                     >
@@ -793,7 +799,7 @@ export default function Admin() {
                 <div className="flex gap-4">
                   {hasOrderChanged && (
                     <button
-                      onClick={saveProjectOrder}
+                      onClick={handleSaveProjectOrder}
                       disabled={isSaving}
                       className="px-6 py-3 bg-emerald-600 text-white text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:bg-emerald-700 transition-colors"
                     >
@@ -1043,7 +1049,9 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
-                  {(Array.isArray(projects) ? projects : []).map((p, index) => (
+                  {(Array.isArray(projects) ? projects : [])
+                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                    .map((p, index) => (
                     <div key={p.id} className="flex items-center justify-between p-6 border border-black/5 hover:border-black/20 transition-colors">
                       <div className="flex items-center gap-6">
                         <div className="flex flex-col gap-1">
