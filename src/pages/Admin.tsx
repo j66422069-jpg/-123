@@ -344,8 +344,6 @@ export default function Admin() {
         sort_order: index + 1
       }));
       
-      console.log(">>> [PROJECT ORDER SAVE] Payload:", JSON.stringify(payload));
-      
       const res = await fetch("/api/projects/reorder", {
         method: "POST",
         headers: getAuthHeaders(),
@@ -405,8 +403,6 @@ export default function Admin() {
         id: p.id,
         home_order: index + 1
       }));
-      
-      console.log(">>> [HOME ORDER SAVE] Payload:", JSON.stringify(payload));
       
       const res = await fetch("/api/projects/reorder-home", {
         method: "POST",
@@ -651,7 +647,7 @@ export default function Admin() {
                 </div>
                 
                 <div className="space-y-2">
-                  {projects.filter(p => p.featured === 1)
+                  {projects.filter(p => p.featured === 1 || p.featured === true)
                     .sort((a, b) => (a.home_order || 0) - (b.home_order || 0))
                     .map((p, idx, filteredArr) => (
                     <div key={p.id} className="flex items-center justify-between p-4 bg-black/5 border border-black/5">
@@ -680,7 +676,7 @@ export default function Admin() {
                       </div>
                     </div>
                   ))}
-                  {projects.filter(p => p.featured === 1).length === 0 && (
+                  {projects.filter(p => p.featured === 1 || p.featured === true).length === 0 && (
                     <p className="text-xs text-black/40 italic py-8 text-center">주요 작업으로 설정된 프로젝트가 없습니다.</p>
                   )}
                 </div>
